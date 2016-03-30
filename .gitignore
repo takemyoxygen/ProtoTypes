@@ -1,1 +1,8 @@
 packages
+.fake
+build
+bin
+obj
+
+.paket/paket.exe
+
