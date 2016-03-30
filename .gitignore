@@ -3,6 +3,7 @@ packages
 build
 bin
 obj
+paket-files
 
 .paket/paket.exe
 

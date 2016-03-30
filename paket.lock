@@ -2,3 +2,8 @@ NUGET
   remote: https://www.nuget.org/api/v2
   specs:
     FAKE (4.22.8)
+GITHUB
+  remote: fsprojects/FSharp.TypeProviders.StarterPack
+  specs:
+    src/ProvidedTypes.fs (77fda2a5ce7efbcc84011210553924af5ff961b3)
+    src/ProvidedTypes.fsi (77fda2a5ce7efbcc84011210553924af5ff961b3)
