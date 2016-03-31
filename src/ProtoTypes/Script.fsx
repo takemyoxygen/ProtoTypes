@@ -1,7 +1,4 @@
-// Learn more about F# at http://fsharp.net. See the 'F# Tutorial' project
-// for more guidance on F# programming.
-
-#load "ProtoTypes.fs"
-open ProtoTypes
-
-// Define your library scripting code here
+#I "../../build"
+#r "ProtoTypes.dll"
+    
+type foo = ProtoTypes.ProtocolBuffersTypeProvider<"Hello">
