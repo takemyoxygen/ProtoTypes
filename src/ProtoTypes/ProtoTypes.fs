@@ -8,6 +8,8 @@ open ProviderImplementation.ProvidedTypes
 open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Core.CompilerServices
 
+open Froto.Parser.Model
+
 [<TypeProvider>]
 type ProtocolBuffersTypeProviderCreator() as this= 
     inherit TypeProviderForNamespaces()
@@ -23,6 +25,12 @@ type ProtocolBuffersTypeProviderCreator() as this=
         protobufProvider.DefineStaticParameters(parameters, fun typeName args ->
             let provider = ProvidedTypeDefinition(asm, ns, typeName, Some typeof<obj>, HideObjectMethods = true)
             let pathToFile = args.[0] :?> string
+            let protoFile = ProtoFile.ParseFile pathToFile
+            
+            protoFile.Messages
+            |> Seq.map TypeGen.typeForMessage
+            |> Seq.iter provider.AddMember
+            
             provider)
             
         this.AddNamespace(ns, [protobufProvider])
