@@ -1,19 +1,30 @@
 namespace ProtoTypes
 
 open System
+open System.Collections.Generic
 
 open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.Patterns
 open Microsoft.FSharp.Core.CompilerServices
 
 open ProviderImplementation.ProvidedTypes
 open Froto.Parser.Model
 
+type Container = Dictionary<string, obj>
+
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
-    let private toCamelCase (s: string) =
+    let private withFirstChar f (input: string) =
+        if String.IsNullOrEmpty input then input
+        else
+            let first = input.[0] |> f |> string
+            if input.Length > 1 then first + input.Substring(1)
+            else first        
+
+    let private toPascalCase (s: string) =
         s.Split('_')
-        |> Seq.map (fun s -> Char.ToUpper(s.[0]).ToString() + (if s.Length > 1 then s.Substring(1) else String.Empty) )
+        |> Seq.map (withFirstChar Char.ToUpper)
         |> String.concat String.Empty
 
     let private propertyForField (field: ProtoField) =
@@ -29,15 +40,49 @@ module internal TypeGen =
             | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType), box <| Some value
             | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType), box [value]
             
-        ProvidedProperty(toCamelCase field.Name, propertyType, GetterCode = (fun _ -> <@@ value @@>))
+        ProvidedProperty(toPascalCase field.Name, propertyType, GetterCode = (fun _ -> <@@ value @@>))
+
+    /// Creates a constructor which intialized given list of properties. 
+    /// Stores values in the dictionary. Body of the constructor would like like:
+    /// type Type(prop1, prop2, prop3...) =
+    ///     let container = new Dictionary<string, obj>()
+    ///     container.Add("prop1", prop1 :> obj)
+    ///     container.Add("prop2", prop2 :> obj)
+    ///     container.Add("prop3", prop3 :> obj)
+    ///     container
+    let private createConstructor (properties: ProvidedProperty list) =
+        let parameters =
+            properties
+            |> List.map (fun prop -> ProvidedParameter(withFirstChar Char.ToLower prop.Name, prop.PropertyType))
+        
+        let addMethod = typeof<Container>.GetMethod("Add")
+
+        let add dict name value =
+            Expr.Call(dict, addMethod, [Expr.Value(name); Expr.Coerce(value, typeof<obj>)])
+
+        let constructorBody args =
+            let container = Var("container", typeof<Container>)
+            let containerExp = Expr.Var container
+            let namedArgs = args |> List.mapi (fun i var -> parameters.[i].Name, var) 
+            let body = 
+                List.foldBack 
+                    (fun (name, value) prev -> Expr.Sequential(add containerExp name value, prev)) 
+                    namedArgs
+                    containerExp
+                
+            Expr.Let(
+                container, 
+                Expr.NewObject(typeof<Container>.GetConstructor([||]), []), 
+                body)
+
+        ProvidedConstructor(parameters, InvokeCode = constructorBody)
 
     let typeForMessage (message: ProtoMessage) = 
-        let messageType = new ProvidedTypeDefinition(message.Name, Some typeof<obj>)
+        let messageType = new ProvidedTypeDefinition(message.Name, Some typeof<Container>)
         
-        message.Fields
-        |> Seq.map propertyForField
-        |> Seq.iter messageType.AddMember
+        let properties = message.Fields |> List.map propertyForField
+        properties |> Seq.iter messageType.AddMember
         
-        messageType.AddMember <| ProvidedConstructor([], InvokeCode = (fun _ -> <@@ new obj() @@>))
+        messageType.AddMember <| createConstructor properties
         
         messageType
