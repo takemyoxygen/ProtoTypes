@@ -4,6 +4,7 @@ build
 bin
 obj
 paket-files
+.vs
 
 .paket/paket.exe
 
