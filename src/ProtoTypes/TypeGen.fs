@@ -4,8 +4,6 @@ open System
 open System.Collections.Generic
 
 open Microsoft.FSharp.Quotations
-open Microsoft.FSharp.Quotations.Patterns
-open Microsoft.FSharp.Core.CompilerServices
 
 open ProviderImplementation.ProvidedTypes
 open Froto.Parser.Model
@@ -15,54 +13,41 @@ type Container = Dictionary<string, obj>
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
-    let private withFirstChar f (input: string) =
-        if String.IsNullOrEmpty input then input
-        else
-            let first = input.[0] |> f |> string
-            if input.Length > 1 then first + input.[1..]
-            else first        
-
-    let private toPascalCase (s: string) =
-        s.Split('_')
-        |> Seq.map (withFirstChar Char.ToUpper)
-        |> String.concat String.Empty
-
     let private propertyForField (field: ProtoField) =
-        let fieldType, value = 
+        let fieldType = 
             match field.Type with
-            | "int32" -> typeof<int>, box 0
-            | "string" -> typeof<string>, box "string"
+            | "int32" -> typeof<int>
+            | "string" -> typeof<string>
             | _ -> notsupportedf "Field type %s" field.Type
             
-        let propertyType, propertyValue = 
+        let propertyType = 
             match field.Rule with
-            | Required -> fieldType, value
-            | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType), box <| Some value
-            | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType), box [value]
+            | Required -> fieldType
+            | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType)
+            | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType)
             
-        let propertyName = toPascalCase field.Name
-        let key = withFirstChar Char.ToLower propertyName
-            
+        let propertyName = Naming.snakeToPascal field.Name
+
         ProvidedProperty(
             propertyName,
             propertyType, 
             GetterCode = (fun args -> 
                 Expr.Coerce(
-                    <@@ (%%args.[0]: Container).[key] @@>,
+                    <@@ (%%args.[0]: Container).[propertyName] @@>,
                     propertyType)))
 
     /// Creates a constructor which intialized given list of properties. 
     /// Stores values in the dictionary. Body of the constructor would like like:
     /// type Type(prop1, prop2, prop3...) =
     ///     let container = new Dictionary<string, obj>()
-    ///     container.Add("prop1", prop1 :> obj)
-    ///     container.Add("prop2", prop2 :> obj)
-    ///     container.Add("prop3", prop3 :> obj)
+    ///     container.Add("Prop1", prop1 :> obj)
+    ///     container.Add("Prop2", prop2 :> obj)
+    ///     container.Add("Prop3", prop3 :> obj)
     ///     container
     let private createConstructor (properties: ProvidedProperty list) =
         let parameters =
             properties
-            |> List.map (fun prop -> ProvidedParameter(withFirstChar Char.ToLower prop.Name, prop.PropertyType))
+            |> List.map (fun prop -> ProvidedParameter(Naming.pascalToCamel prop.Name, prop.PropertyType))
         
         let addMethod = typeof<Container>.GetMethod("Add")
 
@@ -72,7 +57,7 @@ module internal TypeGen =
         let constructorBody args =
             let container = Var("container", typeof<Container>)
             let containerExp = Expr.Var container
-            let namedArgs = args |> List.mapi (fun i var -> parameters.[i].Name, var) 
+            let namedArgs = args |> List.mapi (fun i var -> properties.[i].Name, var) 
             let body = 
                 List.foldBack 
                     (fun (name, value) prev -> Expr.Sequential(add containerExp name value, prev)) 
