@@ -19,7 +19,7 @@ module internal TypeGen =
         if String.IsNullOrEmpty input then input
         else
             let first = input.[0] |> f |> string
-            if input.Length > 1 then first + input.Substring(1)
+            if input.Length > 1 then first + input.[1..]
             else first        
 
     let private toPascalCase (s: string) =
@@ -40,7 +40,16 @@ module internal TypeGen =
             | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType), box <| Some value
             | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType), box [value]
             
-        ProvidedProperty(toPascalCase field.Name, propertyType, GetterCode = (fun _ -> <@@ value @@>))
+        let propertyName = toPascalCase field.Name
+        let key = withFirstChar Char.ToLower propertyName
+            
+        ProvidedProperty(
+            propertyName,
+            propertyType, 
+            GetterCode = (fun args -> 
+                Expr.Coerce(
+                    <@@ (%%args.[0]: Container).[key] @@>,
+                    propertyType)))
 
     /// Creates a constructor which intialized given list of properties. 
     /// Stores values in the dictionary. Body of the constructor would like like:

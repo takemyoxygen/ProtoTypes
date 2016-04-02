@@ -12,6 +12,9 @@ open Microsoft.FSharp.Quotations.Patterns
 type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<"proto/person.proto">
 type Person = ProtoBuf.Person
 let p = Person("Name", 123, Some "Email")
+p.Email
+p.Id
+p.Name
 type Container = Dictionary<string, obj>
 
 let vars = 
