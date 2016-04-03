@@ -13,12 +13,20 @@ type Container = Dictionary<string, obj>
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
+    let private convertScalarType = function
+        | "double" -> typeof<double>
+        | "float" -> typeof<float32>
+        | "int32" | "sint32" | "fixed32" | "sfixed32" -> typeof<int>
+        | "int64" | "sint64" | "fixed64" | "sfixed64" -> typeof<int64>
+        | "uint32" -> typeof<uint32>
+        | "uint64" -> typeof<uint64>
+        | "string" -> typeof<string>
+        | "bool" -> typeof<bool>
+        | "bytes" -> typeof<byte[]>
+        | x -> notsupportedf "Field type %s" x
+
     let private propertyForField (field: ProtoField) =
-        let fieldType = 
-            match field.Type with
-            | "int32" -> typeof<int>
-            | "string" -> typeof<string>
-            | _ -> notsupportedf "Field type %s" field.Type
+        let fieldType = convertScalarType field.Type
             
         let propertyType = 
             match field.Rule with
