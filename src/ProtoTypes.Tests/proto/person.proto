@@ -1,7 +1,14 @@
 message Person {
+
+  enum Gender {
+      MALE = 0;
+      FEMALE = 1;
+  }
+
   required string name = 1;
   required int32 id = 2;
   required bool has_criminal_convictions = 3;
   required double weight = 4;
-  optional string email = 5;
+  required Gender person_gender = 5;
+  optional string email = 6;
 }

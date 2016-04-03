@@ -13,26 +13,31 @@ type Container = Dictionary<string, obj>
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
-    let private convertScalarType = function
-        | "double" -> typeof<double>
-        | "float" -> typeof<float32>
-        | "int32" | "sint32" | "fixed32" | "sfixed32" -> typeof<int>
-        | "int64" | "sint64" | "fixed64" | "sfixed64" -> typeof<int64>
-        | "uint32" -> typeof<uint32>
-        | "uint64" -> typeof<uint64>
-        | "string" -> typeof<string>
-        | "bool" -> typeof<bool>
-        | "bytes" -> typeof<byte[]>
-        | x -> notsupportedf "Field type %s" x
+    let private asScalarType = function
+        | "double" -> Some typeof<double>
+        | "float" -> Some typeof<float32>
+        | "int32" | "sint32" | "fixed32" | "sfixed32" -> Some typeof<int>
+        | "int64" | "sint64" | "fixed64" | "sfixed64" -> Some typeof<int64>
+        | "uint32" -> Some typeof<uint32>
+        | "uint64" -> Some typeof<uint64>
+        | "string" -> Some typeof<string>
+        | "bool" -> Some typeof<bool>
+        | "bytes" -> Some typeof<byte[]>
+        | x -> None
+    
+    let applyRule rule (fieldType: Type) = 
+        match rule with
+        | Required -> fieldType
+        | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType)
+        | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType)
 
-    let private propertyForField (field: ProtoField) =
-        let fieldType = convertScalarType field.Type
-            
+    let private propertyForField (typesRegistry: Map<string, Type>) (field: ProtoField) =
+
         let propertyType = 
-            match field.Rule with
-            | Required -> fieldType
-            | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType)
-            | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType)
+            asScalarType field.Type 
+            |> Option.otherwise (fun _ -> typesRegistry |> Map.tryFind field.Type)
+            |> Option.require (sprintf "Type '%s' is not supported" field.Type)
+            |> applyRule field.Rule
             
         let propertyName = Naming.snakeToPascal field.Name
 
@@ -73,17 +78,35 @@ module internal TypeGen =
                 
             Expr.Let(
                 container, 
-                Expr.NewObject(typeof<Container>.GetConstructor([||]), []), 
+                <@@ new Container() @@>, 
                 body)
 
         ProvidedConstructor(parameters, InvokeCode = constructorBody)
+        
+    let private createEnum (enum: ProtoEnum) =
+        let providedEnum = ProvidedTypeDefinition(enum.Name, Some typeof<Enum>)
+        providedEnum.SetEnumUnderlyingType typeof<int>
+        
+        enum.Items
+        |> Seq.map (fun item -> ProvidedLiteralField(Naming.upperSnakeToPascal item.Name, typeof<int>, item.Value))
+        |> Seq.iter providedEnum.AddMember
+        
+        providedEnum
 
     let typeForMessage (message: ProtoMessage) = 
-        let messageType = new ProvidedTypeDefinition(message.Name, Some typeof<Container>)
+        let messageType = new ProvidedTypeDefinition(message.Name, Some typeof<Container>, HideObjectMethods = true)
+
+        let enums = message.Enums |> List.map createEnum
+            
+        // For now, if field is of enum type, int32 property will be generated
+        let typesRegistry = enums |> Seq.map (fun e -> e.Name, typeof<int>) |> Map.ofSeq
         
-        let properties = message.Fields |> List.map propertyForField
+        enums |> Seq.iter messageType.AddMember
+
+        let properties = message.Fields |> List.map (propertyForField typesRegistry)
         properties |> Seq.iter messageType.AddMember
         
         messageType.AddMember <| createConstructor properties
         
+
         messageType
