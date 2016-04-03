@@ -5,7 +5,7 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ProtoTypes", "src\ProtoTypes\ProtoTypes.fsproj", "{0A304644-D2F6-4EE2-8A7D-19335F93FE3E}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ProtoTypes.Tests", "ProtoTypes.Tests\ProtoTypes.Tests.fsproj", "{3E5F27EB-304E-439A-A19C-F6210D793A93}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ProtoTypes.Tests", "src\ProtoTypes.Tests\ProtoTypes.Tests.fsproj", "{3E5F27EB-304E-439A-A19C-F6210D793A93}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "misc", "misc", "{358A9B71-4C94-44BD-B2FE-D9AE71994CD6}"
 	ProjectSection(SolutionItems) = preProject
