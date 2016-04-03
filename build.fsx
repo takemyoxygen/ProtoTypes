@@ -18,7 +18,10 @@ Target "Build" (fun _ ->
 
 Target "Test" (fun _ ->
     !! "./build/*.Tests.dll"
-    |> NUnit3 (fun p -> {p with OutputDir = outputDirectory @@ "TestResult.xml"})
+    |> NUnit3 (fun p -> 
+        { p with 
+            OutputDir = outputDirectory @@ "TestResult.xml"; 
+            WorkingDir = outputDirectory })
 )
 
 "Clean"
