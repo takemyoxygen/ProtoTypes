@@ -2,6 +2,8 @@ source https://www.nuget.org/api/v2
 
 nuget FAKE
 nuget Froto.Parser >= 0.2.0 prerelease
+nuget FsCheck
+nuget FsUnit
 
 github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fs
 github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fsi

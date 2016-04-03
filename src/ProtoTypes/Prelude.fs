@@ -1,6 +1,7 @@
 namespace ProtoTypes
 
 open System
+open System.IO
 
 [<AutoOpen>]
 module Prelude =
@@ -9,3 +10,6 @@ module Prelude =
         sprintf format args
         |> NotSupportedException
         |> raise
+        
+    let (</>) path1 path2 = 
+        Path.Combine(path1, path2)

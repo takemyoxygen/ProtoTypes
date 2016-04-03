@@ -5,6 +5,13 @@ NUGET
     FParsec (1.0.2) - framework: >= net45
     Froto.Parser (0.2.0-b030)
       FParsec (>= 1.0.2) - framework: >= net45
+    FsCheck (2.2.5)
+      FSharp.Core (>= 3.1.2.5)
+    FSharp.Core (4.0.0.1)
+    FsUnit (2.1)
+      FSharp.Core (>= 3.1.2.5)
+      NUnit (3.2)
+    NUnit (3.2)
 GITHUB
   remote: fsprojects/FSharp.TypeProviders.StarterPack
   specs:
