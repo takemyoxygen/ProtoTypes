@@ -48,11 +48,10 @@ module internal TypeGen =
         let parameters =
             properties
             |> List.map (fun prop -> ProvidedParameter(Naming.pascalToCamel prop.Name, prop.PropertyType))
-        
-        let addMethod = typeof<Container>.GetMethod("Add")
 
         let add dict name value =
-            Expr.Call(dict, addMethod, [Expr.Value(name); Expr.Coerce(value, typeof<obj>)])
+            let boxed = Expr.Coerce(value, typeof<obj>)
+            <@@ (%%dict: Container).Add(name, %%boxed) @@>
 
         let constructorBody args =
             let container = Var("container", typeof<Container>)
