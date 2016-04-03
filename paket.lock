@@ -12,6 +12,17 @@ NUGET
       FSharp.Core (>= 3.1.2.5)
       NUnit (3.2)
     NUnit (3.2)
+    NUnit.ConsoleRunner (3.2)
+    NUnit.Extension.NUnitProjectLoader (3.2)
+    NUnit.Extension.NUnitV2Driver (3.2)
+    NUnit.Extension.NUnitV2ResultWriter (3.2)
+    NUnit.Extension.VSProjectLoader (3.2)
+    NUnit.Runners (3.2)
+      NUnit.ConsoleRunner (3.2)
+      NUnit.Extension.NUnitProjectLoader (3.2)
+      NUnit.Extension.NUnitV2Driver (3.2)
+      NUnit.Extension.NUnitV2ResultWriter (3.2)
+      NUnit.Extension.VSProjectLoader (3.2)
 GITHUB
   remote: fsprojects/FSharp.TypeProviders.StarterPack
   specs:
