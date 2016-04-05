@@ -4,6 +4,12 @@ message Person {
       MALE = 0;
       FEMALE = 1;
   }
+  
+  message Address {
+      required string address1 = 1;
+      required int32 house_number = 2;
+      repeated int32 whatever = 3;
+  }
 
   required string name = 1;
   required int32 id = 2;
@@ -11,4 +17,5 @@ message Person {
   required double weight = 4;
   required Gender person_gender = 5;
   optional string email = 6;
+  optional Address person_address = 7;
 }

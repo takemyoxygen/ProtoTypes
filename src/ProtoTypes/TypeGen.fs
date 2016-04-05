@@ -93,20 +93,25 @@ module internal TypeGen =
         
         providedEnum
 
-    let typeForMessage (message: ProtoMessage) = 
+    let rec typeForMessage (message: ProtoMessage) = 
         let messageType = new ProvidedTypeDefinition(message.Name, Some typeof<Container>, HideObjectMethods = true)
 
         let enums = message.Enums |> List.map createEnum
+        let nestedTypes = message.Messages |> List.map typeForMessage
             
         // For now, if field is of enum type, int32 property will be generated
-        let typesRegistry = enums |> Seq.map (fun e -> e.Name, typeof<int>) |> Map.ofSeq
+        let typesRegistry = 
+            enums
+            |> Seq.map (fun e -> e.Name, typeof<int>)
+            |> Seq.append (nestedTypes |> Seq.map (fun (n: ProvidedTypeDefinition) -> n.Name, n :> Type))
+            |> Map.ofSeq
         
         enums |> Seq.iter messageType.AddMember
+        nestedTypes |> Seq.iter messageType.AddMember
 
         let properties = message.Fields |> List.map (propertyForField typesRegistry)
         properties |> Seq.iter messageType.AddMember
         
         messageType.AddMember <| createConstructor properties
-        
 
         messageType
