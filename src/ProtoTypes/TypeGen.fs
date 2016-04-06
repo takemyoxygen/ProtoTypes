@@ -10,6 +10,47 @@ open Froto.Parser.Model
 
 type Container = Dictionary<string, obj>
 
+type TypeKind = 
+    | Class
+    | Enum
+    
+type TypesLookup = Map<string, TypeKind * ProvidedTypeDefinition>
+
+module internal TypesRegistry = 
+        
+    let private getShortName (fullName: string) = fullName.Split('.') |> Seq.last
+    
+    let rec private allScopes (scope: string) = seq{
+        yield scope
+        let lowestScopePosition = scope.LastIndexOf(".")
+        if lowestScopePosition > 0 
+        then yield! scope.Substring(0, lowestScopePosition) |> allScopes
+    } 
+
+    let discoverTypes scope (messages: ProtoMessage seq) =
+        
+        let rec loop scope (message: ProtoMessage) = seq {
+            let fullName = scope +.+ message.Name
+            yield Class, fullName
+            yield! message.Enums |> Seq.map (fun enum -> Enum, fullName +.+ enum.Name)
+            yield! message.Messages |> Seq.collect (loop fullName)
+        }
+        
+        messages
+        |> Seq.collect (loop scope)
+        |> Seq.map (fun (tp, fullName) -> 
+            fullName, (tp, ProvidedTypeDefinition(getShortName fullName, Some typeof<obj>, HideObjectMethods = true)))
+        |> Map.ofSeq
+        
+    let resolve scope targetType (lookup: TypesLookup) = 
+        printfn "Resolving type '%s' in scope '%s'" targetType scope
+        allScopes scope
+        |> Seq.map (fun s -> s +.+ targetType)
+        |> Seq.map (fun tp -> lookup |> Map.tryFind tp)
+        |> Seq.tryFind Option.isSome
+        |> Option.unwrap
+
+
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
@@ -31,11 +72,17 @@ module internal TypeGen =
         | Optional -> typedefof<Option<_>>.MakeGenericType(fieldType)
         | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType)
 
-    let private propertyForField (typesRegistry: Map<string, Type>) (field: ProtoField) =
+    let private propertyForField scope (lookup: TypesLookup) (field: ProtoField) =
+
+        let findInLookup() =
+            match TypesRegistry.resolve scope field.Type lookup with
+            | Some(Enum, t) -> Some typeof<int>
+            | Some(Class, t) -> Some(t :> Type)
+            | None -> None
 
         let propertyType = 
             asScalarType field.Type 
-            |> Option.otherwise (fun _ -> typesRegistry |> Map.tryFind field.Type)
+            |> Option.otherwise findInLookup
             |> Option.require (sprintf "Type '%s' is not supported" field.Type)
             |> applyRule field.Rule
             
@@ -46,7 +93,7 @@ module internal TypeGen =
             propertyType, 
             GetterCode = (fun args -> 
                 Expr.Coerce(
-                    <@@ (%%args.[0]: Container).[propertyName] @@>,
+                    <@@ ((%%args.[0]: obj) :?> Container).[propertyName] @@>,
                     propertyType)))
 
     /// Creates a constructor which intialized given list of properties. 
@@ -74,7 +121,7 @@ module internal TypeGen =
                 List.foldBack 
                     (fun (name, value) prev -> Expr.Sequential(add containerExp name value, prev)) 
                     namedArgs
-                    containerExp
+                    (Expr.Coerce(containerExp, typeof<obj>))
                 
             Expr.Let(
                 container, 
@@ -83,9 +130,10 @@ module internal TypeGen =
 
         ProvidedConstructor(parameters, InvokeCode = constructorBody)
         
-    let private createEnum (enum: ProtoEnum) =
-        let providedEnum = ProvidedTypeDefinition(enum.Name, Some typeof<Enum>)
-        providedEnum.SetEnumUnderlyingType typeof<int>
+    let private createEnum scope lookup (enum: ProtoEnum) =
+        let _, providedEnum = 
+            TypesRegistry.resolve scope enum.Name lookup
+            |> Option.require (sprintf "Enum '%s' is not defined" enum.Name)
         
         enum.Items
         |> Seq.map (fun item -> ProvidedLiteralField(Naming.upperSnakeToPascal item.Name, typeof<int>, item.Value))
@@ -93,25 +141,18 @@ module internal TypeGen =
         
         providedEnum
 
-    let rec typeForMessage (message: ProtoMessage) = 
-        let messageType = new ProvidedTypeDefinition(message.Name, Some typeof<Container>, HideObjectMethods = true)
-
-        let enums = message.Enums |> List.map createEnum
-        let nestedTypes = message.Messages |> List.map typeForMessage
-            
-        // For now, if field is of enum type, int32 property will be generated
-        let typesRegistry = 
-            enums
-            |> Seq.map (fun e -> e.Name, typeof<int>)
-            |> Seq.append (nestedTypes |> Seq.map (fun (n: ProvidedTypeDefinition) -> n.Name, n :> Type))
-            |> Map.ofSeq
+    let rec typeForMessage scope (lookup: TypesLookup) (message: ProtoMessage) = 
+        let _, providedType = 
+            TypesRegistry.resolve scope message.Name lookup 
+            |> Option.require (sprintf "Type '%s' is not defined" message.Name)
         
-        enums |> Seq.iter messageType.AddMember
-        nestedTypes |> Seq.iter messageType.AddMember
+        let nestedScope = scope +.+ message.Name
+        message.Enums |> Seq.map (createEnum nestedScope lookup) |> Seq.iter providedType.AddMember
+        message.Messages |> Seq.map (typeForMessage nestedScope lookup) |> Seq.iter providedType.AddMember
 
-        let properties = message.Fields |> List.map (propertyForField typesRegistry)
-        properties |> Seq.iter messageType.AddMember
+        let properties = message.Fields |> List.map (propertyForField nestedScope lookup)
+        properties |> Seq.iter providedType.AddMember
         
-        messageType.AddMember <| createConstructor properties
+        providedType.AddMember <| createConstructor properties
 
-        messageType
+        providedType

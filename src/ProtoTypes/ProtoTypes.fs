@@ -33,10 +33,13 @@ type ProtocolBuffersTypeProviderCreator(config : TypeProviderConfig) as this=
 
             let protoFile = ProtoFile.ParseFile protoLocation
             
-            protoFile.Messages
-            |> Seq.map TypeGen.typeForMessage
-            |> Seq.iter provider.AddMember
+            let rootScope = String.Empty
+            let lookup = TypesRegistry.discoverTypes rootScope protoFile.Messages
             
+            protoFile.Messages
+            |> Seq.map (TypeGen.typeForMessage rootScope lookup)
+            |> Seq.iter provider.AddMember
+
             provider)
             
         this.AddNamespace(ns, [protobufProvider])

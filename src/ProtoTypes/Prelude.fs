@@ -14,6 +14,9 @@ module Prelude =
     let (</>) path1 path2 = 
         Path.Combine(path1, path2)
         
+    let (+.+) scope1 scope2 = (scope1 + "." + scope2).Trim('.')
+
+        
 [<RequireQualifiedAccess>]
 module Option =
 
@@ -27,3 +30,11 @@ module Option =
     let require msg = function
         | Some(x) -> x
         | None -> failwith msg
+        
+    let getOrElse alternative = function
+        | Some(x) -> x
+        | None -> alternative
+        
+    let unwrap = function
+        | Some(Some(x)) -> Some x
+        | _ -> None

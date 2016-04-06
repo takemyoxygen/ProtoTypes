@@ -8,11 +8,16 @@
 
 [<Literal>]
 let path = __SOURCE_DIRECTORY__ + "/../ProtoTypes.Tests/proto/person.proto"
-type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<path>
+// type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<path>
 
-type Person = ProtoBuf.Person
-Person.Address
-let address = Person.Address("Foo", 123, [1; 2; 3])
-let p = Person("Name", 123, false, 102.1, Person.Gender.Male, Some "Email",  Some address)
+// type Person = ProtoBuf.Person
+// Person.Address
+// let address = Person.Address("Foo", 123, [1; 2; 3])
+// let p = Person("Name", 123, false, 102.1, Person.Gender.Male, Some "Email",  Some address)
 
-Person.Gender.Male
+// Person.Gender.Male
+
+open Froto.Parser.Model
+let file = ProtoFile.ParseFile path
+
+file.Packages

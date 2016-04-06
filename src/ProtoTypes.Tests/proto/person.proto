@@ -1,3 +1,5 @@
+package ProtoTypes.Sample;
+
 message Person {
 
   enum Gender {
