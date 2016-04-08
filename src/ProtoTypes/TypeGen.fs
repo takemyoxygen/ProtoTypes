@@ -115,3 +115,21 @@ module internal TypeGen =
         providedType.AddMember <| createConstructor properties
 
         providedType
+    
+    /// For the given package e.g. "foo.bar.baz.abc" creates a hierarchy of nested types Foo.Bar.Baz.Abc 
+    /// and returns pair of the first and last types in the hirarchy, Foo and Abc in this case
+    let generatePackageContainer (package: string) =
+    
+        let rec loop names (current: ProvidedTypeDefinition) =
+            match names with
+            | [] -> current
+            | x::xs -> 
+                printfn "Creating type '%s' to put inside '%s'" x current.Name
+                let nested = ProvidedTypeDefinition(Naming.snakeToPascal x, Some typeof<obj>)
+                current.AddMember nested
+                loop xs nested
+                
+        let rootName::rest = package.Split('.') |> List.ofSeq
+        let root = ProvidedTypeDefinition(Naming.snakeToPascal rootName, Some typeof<obj>)
+        let deepest = loop rest root
+        root, deepest

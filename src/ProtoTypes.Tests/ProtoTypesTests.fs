@@ -4,7 +4,7 @@ module ProtoTypes.Tests
 open NUnit.Framework
 open FsUnit
 
-type Proto = ProtoTypes.ProtocolBuffersTypeProvider<"proto/person.proto">
+type Proto = ProtoTypes.ProtocolBuffersTypeProvider<"proto/person.proto">.ProtoTypes.Sample
 
 [<Test>]
 let ``Person test``() =
