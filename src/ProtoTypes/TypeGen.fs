@@ -124,7 +124,6 @@ module internal TypeGen =
             match names with
             | [] -> current
             | x::xs -> 
-                printfn "Creating type '%s' to put inside '%s'" x current.Name
                 let nested = ProvidedTypeDefinition(Naming.snakeToPascal x, Some typeof<obj>)
                 current.AddMember nested
                 loop xs nested

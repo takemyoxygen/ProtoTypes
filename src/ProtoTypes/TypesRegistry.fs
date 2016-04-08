@@ -37,7 +37,6 @@ module internal TypesRegistry =
         |> Map.ofSeq
         
     let resolve scope targetType (lookup: TypesLookup) = 
-        printfn "Resolving type '%s' in scope '%s'" targetType scope
         allScopes scope
         |> Seq.map (fun s -> s +.+ targetType)
         |> Seq.map (fun tp -> lookup |> Map.tryFind tp)
