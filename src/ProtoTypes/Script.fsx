@@ -8,7 +8,7 @@
 
 [<Literal>]
 let path = __SOURCE_DIRECTORY__ + "/../ProtoTypes.Tests/proto/person.proto"
-type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<path>
+type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<path>.ProtoTypes.Sample
 
 type Person = ProtoBuf.Person
 Person.Address
