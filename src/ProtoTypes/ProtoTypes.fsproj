@@ -61,6 +61,10 @@
       <Paket>True</Paket>
       <Link>external/ProvidedTypes.fsi</Link>
     </Content>
+    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.StarterPack\src\ProvidedTypes.fsi">
+      <Paket>True</Paket>
+      <Link>external/ProvidedTypes.fsi</Link>
+    </Compile>
     <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.StarterPack\src\ProvidedTypes.fs">
       <Paket>True</Paket>
       <Link>external/ProvidedTypes.fs</Link>
@@ -92,6 +96,17 @@
         </Reference>
         <Reference Include="FParsecCS">
           <HintPath>..\..\packages\FParsec\lib\net40-client\FParsecCS.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1')">
+      <ItemGroup>
+        <Reference Include="Froto.Core">
+          <HintPath>..\..\packages\Froto.Core\lib\net45\Froto.Core.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

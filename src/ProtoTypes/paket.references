@@ -1,4 +1,5 @@
 Froto.Parser
+Froto.Core
 
 File:ProvidedTypes.fsi external
 File:ProvidedTypes.fs external

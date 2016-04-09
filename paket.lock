@@ -1,9 +1,10 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (4.22.8)
+    FAKE (4.23.6)
     FParsec (1.0.2) - framework: >= net45
-    Froto.Parser (0.2.0-b030)
+    Froto.Core (0.2.1)
+    Froto.Parser (0.2.1)
       FParsec (>= 1.0.2) - framework: >= net45
     FsCheck (2.2.5)
       FSharp.Core (>= 3.1.2.5)
@@ -26,5 +27,5 @@ NUGET
 GITHUB
   remote: fsprojects/FSharp.TypeProviders.StarterPack
   specs:
-    src/ProvidedTypes.fs (77fda2a5ce7efbcc84011210553924af5ff961b3)
-    src/ProvidedTypes.fsi (77fda2a5ce7efbcc84011210553924af5ff961b3)
+    src/ProvidedTypes.fs (ddfb906ecbac78dc9f0f5e172518a72cb5fdf651)
+    src/ProvidedTypes.fsi (ddfb906ecbac78dc9f0f5e172518a72cb5fdf651)

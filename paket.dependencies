@@ -6,6 +6,7 @@ nuget FsCheck
 nuget FsUnit
 nuget NUnit
 nuget NUnit.Runners
+nuget Froto.Core
 
 github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fs
 github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fsi
