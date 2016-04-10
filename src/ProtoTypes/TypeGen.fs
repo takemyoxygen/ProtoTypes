@@ -8,7 +8,11 @@ open Microsoft.FSharp.Quotations
 open ProviderImplementation.ProvidedTypes
 open Froto.Parser.Model
 
-type Container = Dictionary<string, obj>
+type Underlying = Dictionary<string, obj>
+
+type PropertyMetadata = 
+    { ProvidedProperty: ProvidedProperty;
+      ProtoField: ProtoField }
 
 [<RequireQualifiedAccess>]
 module internal TypeGen =
@@ -52,7 +56,7 @@ module internal TypeGen =
             propertyType, 
             GetterCode = (fun args -> 
                 Expr.Coerce(
-                    <@@ ((%%args.[0]: obj) :?> Container).[propertyName] @@>,
+                    <@@ ((%%args.[0]: obj) :?> Underlying).[propertyName] @@>,
                     propertyType)))
 
     /// Creates a constructor which intialized given list of properties. 
@@ -63,19 +67,19 @@ module internal TypeGen =
     ///     container.Add("Prop2", prop2 :> obj)
     ///     container.Add("Prop3", prop3 :> obj)
     ///     container
-    let private createConstructor (properties: ProvidedProperty list) =
+    let private createConstructor (properties: PropertyMetadata list) =
         let parameters =
             properties
-            |> List.map (fun prop -> ProvidedParameter(Naming.pascalToCamel prop.Name, prop.PropertyType))
+            |> List.map (fun prop -> ProvidedParameter(Naming.pascalToCamel prop.ProvidedProperty.Name, prop.ProvidedProperty.PropertyType))
 
         let add dict name value =
             let boxed = Expr.Coerce(value, typeof<obj>)
-            <@@ (%%dict: Container).Add(name, %%boxed) @@>
+            <@@ (%%dict: Underlying).Add(name, %%boxed) @@>
 
         let constructorBody args =
-            let container = Var("container", typeof<Container>)
+            let container = Var("container", typeof<Underlying>)
             let containerExp = Expr.Var container
-            let namedArgs = args |> List.mapi (fun i var -> properties.[i].Name, var) 
+            let namedArgs = args |> List.mapi (fun i var -> properties.[i].ProvidedProperty.Name, var) 
             let body = 
                 List.foldBack 
                     (fun (name, value) prev -> Expr.Sequential(add containerExp name value, prev)) 
@@ -84,7 +88,7 @@ module internal TypeGen =
                 
             Expr.Let(
                 container, 
-                <@@ new Container() @@>, 
+                <@@ new Underlying() @@>, 
                 body)
 
         ProvidedConstructor(parameters, InvokeCode = constructorBody)
@@ -109,8 +113,13 @@ module internal TypeGen =
         message.Enums |> Seq.map (createEnum nestedScope lookup) |> Seq.iter providedType.AddMember
         message.Messages |> Seq.map (typeForMessage nestedScope lookup) |> Seq.iter providedType.AddMember
 
-        let properties = message.Fields |> List.map (propertyForField nestedScope lookup)
-        properties |> Seq.iter providedType.AddMember
+        let properties = 
+            message.Fields 
+            |> List.map (fun field -> 
+                { ProtoField = field; 
+                  ProvidedProperty =  propertyForField nestedScope lookup field })
+
+        properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty)
         
         providedType.AddMember <| createConstructor properties
 
