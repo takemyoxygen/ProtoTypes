@@ -6,6 +6,8 @@ open System.Reflection
 
 open ProviderImplementation
 open ProviderImplementation.ProvidedTypes
+open ProviderImplementation.ProvidedTypesTesting
+
 open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Core.CompilerServices
 
@@ -48,6 +50,10 @@ type ProtocolBuffersTypeProviderCreator(config : TypeProviderConfig) as this=
             protoFile.Messages
             |> Seq.map (TypeGen.typeForMessage rootScope lookup)
             |> Seq.iter container.AddMember
+            
+            if config.IsHostedExecution then
+                Testing.FormatProvidedType(container, true)
+                |> printfn "%s"
             
             provider)
             

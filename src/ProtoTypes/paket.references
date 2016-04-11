@@ -3,3 +3,4 @@ Froto.Core
 
 File:ProvidedTypes.fsi external
 File:ProvidedTypes.fs external
+File:ProvidedTypesTesting.fs external

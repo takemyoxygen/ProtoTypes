@@ -1,6 +1,8 @@
 ﻿[<NUnit.Framework.TestFixture>]
 module ProtoTypes.Tests
 
+open System
+
 open NUnit.Framework
 open FsUnit
 
@@ -13,4 +15,3 @@ let ``Person test``() =
     p.Name |> should be (equal "Name")
     p.PersonGender |> should be (equal Proto.Person.Gender.Female)
     p.PersonAddress.Value.Address1 |> should be (equal "Street")
-    

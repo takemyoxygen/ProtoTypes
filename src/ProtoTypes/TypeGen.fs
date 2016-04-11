@@ -6,14 +6,18 @@ open System.Collections.Generic
 open Microsoft.FSharp.Quotations
 
 open ProviderImplementation.ProvidedTypes
+
 open Froto.Parser.Model
+open Froto.Core
+open Froto.Core.Encoding
 
 type Underlying = Dictionary<string, obj>
 
 type PropertyMetadata = 
     { ProvidedProperty: ProvidedProperty;
-      ProtoField: ProtoField }
-
+      ProtoField: ProtoField;
+      Getter: Expr -> Expr }
+      
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
@@ -51,13 +55,15 @@ module internal TypeGen =
             
         let propertyName = Naming.snakeToPascal field.Name
 
-        ProvidedProperty(
-            propertyName,
-            propertyType, 
-            GetterCode = (fun args -> 
+        let getter = 
+            (fun this -> 
                 Expr.Coerce(
-                    <@@ ((%%args.[0]: obj) :?> Underlying).[propertyName] @@>,
-                    propertyType)))
+                    <@@ ((%%this: obj) :?> Underlying).[propertyName] @@>,
+                    propertyType))
+
+        let prop = ProvidedProperty(propertyName, propertyType, GetterCode = (fun args -> getter <| args.[0]))
+        
+        { ProtoField = field; ProvidedProperty = prop; Getter = getter }
 
     /// Creates a constructor which intialized given list of properties. 
     /// Stores values in the dictionary. Body of the constructor would like like:
@@ -70,7 +76,8 @@ module internal TypeGen =
     let private createConstructor (properties: PropertyMetadata list) =
         let parameters =
             properties
-            |> List.map (fun prop -> ProvidedParameter(Naming.pascalToCamel prop.ProvidedProperty.Name, prop.ProvidedProperty.PropertyType))
+            |> List.map (fun prop -> 
+                ProvidedParameter(Naming.pascalToCamel prop.ProvidedProperty.Name, prop.ProvidedProperty.PropertyType))
 
         let add dict name value =
             let boxed = Expr.Coerce(value, typeof<obj>)
@@ -115,9 +122,7 @@ module internal TypeGen =
 
         let properties = 
             message.Fields 
-            |> List.map (fun field -> 
-                { ProtoField = field; 
-                  ProvidedProperty =  propertyForField nestedScope lookup field })
+            |> List.map (propertyForField nestedScope lookup)
 
         properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty)
         
