@@ -1,5 +1,7 @@
 #r "./packages/FAKE/tools/FakeLib.dll"
 
+open System
+
 open Fake
 open Fake.Testing
 
@@ -23,6 +25,15 @@ Target "Test" (fun _ ->
             OutputDir = outputDirectory @@ "TestResult.xml"; 
             WorkingDir = outputDirectory })
 )
+
+Target "Watch" (fun _ ->
+    use watcher = 
+        !! "src/**/*.fs"
+        |> WatchChanges (fun changes ->
+            tracefn "%A" changes
+            Run "Test")
+            
+    Console.ReadLine() |> ignore)
 
 "Clean"
 ==> "Build"
