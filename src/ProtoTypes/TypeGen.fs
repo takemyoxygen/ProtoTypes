@@ -1,9 +1,11 @@
 namespace ProtoTypes
 
 open System
+open System.Reflection
 open System.Collections.Generic
 
 open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.Patterns
 
 open ProviderImplementation.ProvidedTypes
 
@@ -13,10 +15,26 @@ open Froto.Core.Encoding
 
 type Underlying = Dictionary<string, obj>
 
-type PropertyMetadata = 
+type ReadOnlyPropertyMetadata = 
     { ProvidedProperty: ProvidedProperty;
-      ProtoField: ProtoField;
-      Getter: Expr -> Expr }
+      BackingField: ProvidedField;
+      ProtoField: ProtoField; }
+      
+ [<RequireQualifiedAccess>]
+module Provided =
+    
+    let addEnumValues (enum: ProvidedTypeDefinition) =
+        Seq.map(fun (name, value) ->  ProvidedLiteralField(name, typeof<int>, value))
+        >> Seq.iter enum.AddMember
+        
+    let readOnlyProperty propertyType name =
+        let field = ProvidedField(Naming.pascalToCamel name, propertyType)
+        field.SetFieldAttributes(FieldAttributes.InitOnly ||| FieldAttributes.Private)
+
+        let property = ProvidedProperty(name, propertyType)
+        property.GetterCode <- (fun args -> Expr.FieldGet(args.[0], field))
+        
+        property, field
       
 [<RequireQualifiedAccess>]
 module internal TypeGen =
@@ -54,50 +72,40 @@ module internal TypeGen =
             |> applyRule field.Rule
             
         let propertyName = Naming.snakeToPascal field.Name
-
-        let getter = 
-            (fun this -> 
-                Expr.Coerce(
-                    <@@ ((%%this: obj) :?> Underlying).[propertyName] @@>,
-                    propertyType))
-
-        let prop = ProvidedProperty(propertyName, propertyType, GetterCode = (fun args -> getter <| args.[0]))
         
-        { ProtoField = field; ProvidedProperty = prop; Getter = getter }
+        let property, backingField = Provided.readOnlyProperty propertyType propertyName
+        
+        { ProvidedProperty = property; BackingField = backingField; ProtoField = field }
 
-    /// Creates a constructor which intialized given list of properties. 
-    /// Stores values in the dictionary. Body of the constructor would like like:
-    /// type Type(prop1, prop2, prop3...) =
-    ///     let container = new Dictionary<string, obj>()
-    ///     container.Add("Prop1", prop1 :> obj)
-    ///     container.Add("Prop2", prop2 :> obj)
-    ///     container.Add("Prop3", prop3 :> obj)
-    ///     container
-    let private createConstructor (properties: PropertyMetadata list) =
+    /// Creates a constructor which intializes backing fields for the given list of properties 
+    let private createConstructor (properties: ReadOnlyPropertyMetadata list) =
         let parameters =
             properties
-            |> List.map (fun prop -> 
-                ProvidedParameter(Naming.pascalToCamel prop.ProvidedProperty.Name, prop.ProvidedProperty.PropertyType))
+            |> List.map (fun prop -> ProvidedParameter(prop.BackingField.Name, prop.ProvidedProperty.PropertyType))
+
+        let fieldsMap = 
+            properties
+            |> Seq.map (fun prop -> prop.BackingField.Name, prop.BackingField)
+            |> Map.ofSeq
+            
+        let setField this arg = 
+            match arg with
+            | Var(v) ->
+                match fieldsMap |> Map.tryFind v.Name with
+                | Some(field) ->  Expr.FieldSet(this, field, arg)
+                | None -> failwithf "Unable to find field '%s'" v.Name
+            | _ -> Prelude.notsupportedf "Given expression is not supported: %A" arg
 
         let add dict name value =
             let boxed = Expr.Coerce(value, typeof<obj>)
             <@@ (%%dict: Underlying).Add(name, %%boxed) @@>
 
         let constructorBody args =
-            let container = Var("container", typeof<Underlying>)
-            let containerExp = Expr.Var container
-            let namedArgs = args |> List.mapi (fun i var -> properties.[i].ProvidedProperty.Name, var) 
-            let body = 
-                List.foldBack 
-                    (fun (name, value) prev -> Expr.Sequential(add containerExp name value, prev)) 
-                    namedArgs
-                    (Expr.Coerce(containerExp, typeof<obj>))
+            let this::args = args
+            match args |> List.map (setField this) with
+            | [] -> Expr.Value(())
+            | h::t -> t |> List.fold (fun acc setter -> Expr.Sequential(acc, setter)) h
                 
-            Expr.Let(
-                container, 
-                <@@ new Underlying() @@>, 
-                body)
-
         ProvidedConstructor(parameters, InvokeCode = constructorBody)
         
     let private createEnum scope lookup (enum: ProtoEnum) =
@@ -106,8 +114,8 @@ module internal TypeGen =
             |> Option.require (sprintf "Enum '%s' is not defined" enum.Name)
         
         enum.Items
-        |> Seq.map (fun item -> ProvidedLiteralField(Naming.upperSnakeToPascal item.Name, typeof<int>, item.Value))
-        |> Seq.iter providedEnum.AddMember
+        |> Seq.map (fun item -> Naming.upperSnakeToPascal item.Name, item.Value)
+        |> Provided.addEnumValues providedEnum
         
         providedEnum
 
@@ -124,7 +132,7 @@ module internal TypeGen =
             message.Fields 
             |> List.map (propertyForField nestedScope lookup)
 
-        properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty)
+        properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
         
         providedType.AddMember <| createConstructor properties
 
@@ -138,11 +146,11 @@ module internal TypeGen =
             match names with
             | [] -> current
             | x::xs -> 
-                let nested = ProvidedTypeDefinition(Naming.snakeToPascal x, Some typeof<obj>)
+                let nested = ProvidedTypeDefinition(Naming.snakeToPascal x, Some typeof<obj>, IsErased = false)
                 current.AddMember nested
                 loop xs nested
                 
         let rootName::rest = package.Split('.') |> List.ofSeq
-        let root = ProvidedTypeDefinition(Naming.snakeToPascal rootName, Some typeof<obj>)
+        let root = ProvidedTypeDefinition(Naming.snakeToPascal rootName, Some typeof<obj>, IsErased = false)
         let deepest = loop rest root
         root, deepest

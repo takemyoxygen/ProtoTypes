@@ -57,10 +57,6 @@
   </Target>
   -->
   <ItemGroup>
-    <Content Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.StarterPack\src\ProvidedTypes.fsi">
-      <Paket>True</Paket>
-      <Link>external/ProvidedTypes.fsi</Link>
-    </Content>
     <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.StarterPack\src\ProvidedTypes.fsi">
       <Paket>True</Paket>
       <Link>external/ProvidedTypes.fsi</Link>
@@ -69,11 +65,12 @@
       <Paket>True</Paket>
       <Link>external/ProvidedTypes.fs</Link>
     </Compile>
-    <Compile Include="Prelude.fs" />
-    <Compile Include="Naming.fs" />
     <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.StarterPack\src\ProvidedTypesTesting.fs">
+      <Paket>True</Paket>
       <Link>external\ProvidedTypesTesting.fs</Link>
     </Compile>
+    <Compile Include="Prelude.fs" />
+    <Compile Include="Naming.fs" />
     <Compile Include="TypesRegistry.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="TypeGen.fs" />

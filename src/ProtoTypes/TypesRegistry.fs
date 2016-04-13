@@ -33,7 +33,7 @@ module internal TypesRegistry =
         messages
         |> Seq.collect (loop scope)
         |> Seq.map (fun (tp, fullName) -> 
-            fullName, (tp, ProvidedTypeDefinition(getShortName fullName, Some typeof<obj>, HideObjectMethods = true)))
+            fullName, (tp, ProvidedTypeDefinition(getShortName fullName, Some typeof<obj>, HideObjectMethods = true, IsErased = false)))
         |> Map.ofSeq
         
     let resolve scope targetType (lookup: TypesLookup) = 

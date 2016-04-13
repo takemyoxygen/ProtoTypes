@@ -16,7 +16,6 @@ module Prelude =
         
     let (+.+) scope1 scope2 = (scope1 + "." + scope2).Trim('.')
 
-        
 [<RequireQualifiedAccess>]
 module Option =
 
