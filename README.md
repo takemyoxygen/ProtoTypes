@@ -15,4 +15,4 @@ Plan so far:
 2. Implement serialization/deserialization to/from byte array.
 3. See what's next.
 
-As disscussed [here](https://github.com/ctaggart/froto/issues/3), this repository migth eventually become part of Forge.
+As disscussed [here](https://github.com/ctaggart/froto/issues/3), this repository migth eventually become part of Froto.
