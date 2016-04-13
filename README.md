@@ -14,3 +14,5 @@ Plan so far:
 1. Implement simple generation of types based on [Froto.Parser](https://www.nuget.org/packages/Froto.Parser/0.2.0-b030). Most likely it will be a set of immutable types with public constructors.
 2. Implement serialization/deserialization to/from byte array.
 3. See what's next.
+
+As disscussed [here](https://github.com/ctaggart/froto/issues/3), this repository migth eventually become part of Forge.
