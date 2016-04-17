@@ -17,8 +17,14 @@ type ProtoPropertyInfo =
       TypeKind: TypeKind}
 
 [<AbstractClass>]
-type Message() =
+type Message() as this =
  
-    abstract SerializedLength: int
+    let mutable size = lazy (
+        let buffer = NullWriteBuffer()
+        this.Serialize buffer |> ignore
+        buffer.Length
+    )
+ 
+    member this.SerializedLength = size.Value
     
-    abstract Serialize: ZeroCopyBuffer -> unit
+    abstract Serialize: ZeroCopyBuffer -> ZeroCopyBuffer

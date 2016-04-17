@@ -29,7 +29,9 @@ module internal TypesRegistry =
         messages
         |> Seq.collect (loop scope)
         |> Seq.map (fun (tp, fullName) -> 
-            fullName, (tp, ProvidedTypeDefinition(getShortName fullName, Some typeof<obj>, HideObjectMethods = true, IsErased = false)))
+            let baseType = match tp with | Class -> typeof<Message> | _ -> typeof<obj>
+            // let baseType = typeof<obj>
+            fullName, (tp, ProvidedTypeDefinition(getShortName fullName, Some baseType, IsErased = false)))
         |> Map.ofSeq
         
     let resolve scope targetType (lookup: TypesLookup) = 

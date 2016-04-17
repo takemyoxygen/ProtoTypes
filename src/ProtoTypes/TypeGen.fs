@@ -82,17 +82,24 @@ module internal TypeGen =
         ProvidedConstructor(parameters, InvokeCode = constructorBody)
     
     let private createSerializeMethod properties =
-        ProvidedMethod(
-            "Serialize",
-            [ ProvidedParameter("buffer", typeof<ZeroCopyBuffer>) ],
-            typeof<unit>,
-            InvokeCode = (fun args ->
-                let this = args.[0]
-                let buffer = args.[1]
-                properties
-                |> List.sortBy (fun prop -> prop.ProtoField.Position)
-                |> List.map (fun prop -> Serialization.serialize prop buffer this)
-                |> Expr.seq ))
+        let serialize =
+            ProvidedMethod(
+                "Serialize",
+                [ ProvidedParameter("buffer", typeof<ZeroCopyBuffer>) ],
+                typeof<ZeroCopyBuffer>,
+                InvokeCode = (fun args ->
+                    let this = args.[0]
+                    let buffer = args.[1]
+                    let serializeProperties = 
+                        properties
+                        |> List.sortBy (fun prop -> prop.ProtoField.Position)
+                        |> List.map (fun prop -> Serialization.serialize prop buffer this)
+                        |> Expr.seq
+                    Expr.Sequential(serializeProperties, buffer)))
+                    
+        serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public ||| MethodAttributes.HideBySig ||| MethodAttributes.Final ||| MethodAttributes.NewSlot)
+
+        serialize
     
     let private createEnum scope lookup (enum: ProtoEnum) =
         let _, providedEnum = 
@@ -120,8 +127,9 @@ module internal TypeGen =
 
         properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
         providedType.AddMember <| createConstructor properties
-        providedType.AddMember <| createSerializeMethod properties
-
+        let serializeMethod = createSerializeMethod properties
+        providedType.AddMember serializeMethod
+        providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
         providedType
     
     /// For the given package e.g. "foo.bar.baz.abc" creates a hierarchy of nested types Foo.Bar.Baz.Abc 

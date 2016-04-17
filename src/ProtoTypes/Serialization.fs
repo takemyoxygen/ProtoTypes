@@ -11,45 +11,77 @@ open Froto.Core.Encoding
 /// Such wrapper is needed, because apprently erased type provides don't support direct calls of inlined functions.
 module Serialization = 
 
-    let writeInt32 fieldNumber (value: int) buffer =
+    let writeInt32 fieldNumber buffer (value: int) =
         Serializer.dehydrateVarint fieldNumber value buffer |> ignore
         
-    let writeString fieldNumber value buffer =
+    let writeString fieldNumber buffer value =
         Serializer.dehydrateString fieldNumber value buffer |> ignore
         
-    let writeBool fieldNumber value buffer =
+    let writeBool fieldNumber buffer value =
         Serializer.dehydrateBool fieldNumber value buffer |> ignore
         
-    let writeDouble fieldNumber value buffer =
+    let writeDouble fieldNumber buffer value =
         Serializer.dehydrateDouble fieldNumber value buffer |> ignore
         
     /// Serializes optional field using provided function to handle inner value if present
-    /// e.g. writeOptional 1 (Some "abc") buffer writeString
-    let writeOptional (fieldNumber: int) value (buffer: ZeroCopyBuffer) writeInner =
+    let writeOptional writeInner value =
         match value with
-        | Some(v) -> writeInner fieldNumber v buffer
+        | Some(v) -> writeInner v
         | None -> ()
+        
+    let writeRepeated writeItem values =
+        for value in values do writeItem value
 
     /// Serializes nested message. Uses provided "embed" function to serialize
     /// nested message content
-    let writeEmbedded fieldNumber (size: uint64) buffer embed = 
+    let writeEmbedded fieldNumber buffer (message: #Message) = 
         buffer
         |> WireFormat.encodeTag fieldNumber WireType.LengthDelimited
-        |> WireFormat.encodeVarint size
-        |> ignore
-        
-        embed buffer
+        |> WireFormat.encodeVarint (uint64 message.SerializedLength)
+        |> message.Serialize
+        |> ignore 
+    
+    let x<'T> : 'T = Unchecked.defaultof<'T>
+    let writeOptionalMethod = <@@ writeOptional x x @@> |> Expr.getMethodDef
+    let writeRepeatedMethod = <@@ writeRepeated x x @@> |> Expr.getMethodDef
+    let writeEmbeddedMethod = <@@ writeEmbedded x x x @@> |> Expr.getMethodDef
         
     let serialize (prop: ProtoPropertyInfo) buffer this =
         let value = Expr.FieldGet(this, prop.BackingField)
-        let position = prop.ProtoField.Position
-        match prop.TypeKind with
-        | Primitive -> 
-            match prop.ProtoField.Type with
-            | "int32" when prop.ProtoField.Rule = Required -> 
-                Expr.Application(<@@ writeInt32 position %%value @@>, buffer)
-            | _ -> Expr.Value(())
+        
+        let undelryingType = 
+            if prop.BackingField.FieldType.IsGenericType
+            then prop.BackingField.FieldType.GetGenericArguments().[0]
+            else prop.BackingField.FieldType
             
-        | x ->
-            Expr.Value(()) 
-            //notsupportedf "Type kind '%A' is not supported" x
+        let position = prop.ProtoField.Position
+        
+        // writer is an expression that represents a function 'T -> unit
+        let writer =
+            match prop.TypeKind with
+                | Primitive -> 
+                    match prop.ProtoField.Type with
+                    | "int32" -> <@@ writeInt32 position %%buffer@@>
+                    | "string" -> <@@ writeString position %%buffer @@>
+                    | "double" -> <@@ writeDouble position %%buffer @@>
+                    | "bool" -> <@@ writeBool position %%buffer @@>
+                    | x -> notsupportedf "Primitive type '%s' is not supported" x 
+                | Class -> 
+                    let value = Var("value", undelryingType)
+                    let valueExpr = Expr.Var(value)
+                    let genericWrite = writeEmbeddedMethod.MakeGenericMethod(undelryingType)
+                    let positionExpr = Expr.Value(position)
+                    let writer = Expr.Lambda(value, Expr.Call(genericWrite, [positionExpr; buffer; valueExpr]))
+                    writer
+                | Enum -> <@@ writeInt32 position %%buffer @@>
+        
+        match prop.ProtoField.Rule with
+        | Required -> Expr.Application(writer, value)
+        | Optional ->
+            Expr.Call(
+                writeOptionalMethod.MakeGenericMethod(undelryingType),
+                [writer; value])
+        | Repeated ->
+            Expr.Call(
+                writeRepeatedMethod.MakeGenericMethod(undelryingType),
+                [writer; value])

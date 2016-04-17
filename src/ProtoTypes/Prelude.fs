@@ -43,8 +43,16 @@ module Option =
 module Expr =
 
     open Microsoft.FSharp.Quotations
+    open Microsoft.FSharp.Quotations.Patterns
 
     let seq = function
         | [] -> Expr.Value(())
         | h::[] -> h
         | h::t -> List.fold (fun acc e -> Expr.Sequential(acc, e)) h t
+        
+    let getMethodDef = function
+        | Call(_, m, _) ->
+            if m.IsGenericMethod
+            then m.GetGenericMethodDefinition()
+            else m
+        | x -> notsupportedf "Expression %A is not supported" x
