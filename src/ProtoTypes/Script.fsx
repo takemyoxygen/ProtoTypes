@@ -18,4 +18,7 @@ let address = Sample.Person.Address("Foo", 123, [1; 2; 3])
 
 let p = Sample.Person("Name", 123, false, 102.1, Sample.Person.Gender.Male, Some "Email",  Some address)
 
-p.GetType().GetProperties() |> Seq.map (fun p -> p.Name) |> List.ofSeq
+let buffer = ZeroCopyBuffer(1000)
+p.Serialize(buffer)
+
+buffer

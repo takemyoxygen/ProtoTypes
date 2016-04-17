@@ -46,7 +46,7 @@ type ProtocolBuffersTypeProviderCreator(config : TypeProviderConfig) as this=
                 if String.IsNullOrEmpty rootScope
                 then provider 
                 else
-                    let root, deepest = TypeGen.generatePackageContainer rootScope
+                    let root, deepest = TypeGen.createNamespaceContainer rootScope
                     provider.AddMember root
                     deepest
             
@@ -55,7 +55,7 @@ type ProtocolBuffersTypeProviderCreator(config : TypeProviderConfig) as this=
             
             printfn "Generating members of discovered types."
             protoFile.Messages
-            |> Seq.map (TypeGen.typeForMessage rootScope lookup)
+            |> Seq.map (TypeGen.createType rootScope lookup)
             |> Seq.iter container.AddMember
             
             if config.IsHostedExecution then

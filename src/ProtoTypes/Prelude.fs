@@ -37,3 +37,14 @@ module Option =
     let unwrap = function
         | Some(Some(x)) -> Some x
         | _ -> None
+        
+        
+[<RequireQualifiedAccess>]
+module Expr =
+
+    open Microsoft.FSharp.Quotations
+
+    let seq = function
+        | [] -> Expr.Value(())
+        | h::[] -> h
+        | h::t -> List.fold (fun acc e -> Expr.Sequential(acc, e)) h t

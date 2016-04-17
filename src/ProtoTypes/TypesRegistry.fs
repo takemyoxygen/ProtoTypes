@@ -3,10 +3,6 @@ namespace ProtoTypes
 open ProviderImplementation.ProvidedTypes
 
 open Froto.Parser.Model
-
-type TypeKind = 
-    | Class
-    | Enum
     
 type TypesLookup = Map<string, TypeKind * ProvidedTypeDefinition>
 
@@ -22,7 +18,7 @@ module internal TypesRegistry =
     } 
 
     let discoverTypes scope (messages: ProtoMessage seq) =
-        
+    
         let rec loop scope (message: ProtoMessage) = seq {
             let fullName = scope +.+ message.Name
             yield Class, fullName

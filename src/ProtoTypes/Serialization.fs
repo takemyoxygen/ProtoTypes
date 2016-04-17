@@ -1,5 +1,8 @@
 ﻿namespace ProtoTypes
 
+open Microsoft.FSharp.Quotations
+
+open Froto.Parser.Model
 open Froto.Core
 open Froto.Core.Encoding
 
@@ -36,3 +39,17 @@ module Serialization =
         |> ignore
         
         embed buffer
+        
+    let serialize (prop: ProtoPropertyInfo) buffer this =
+        let value = Expr.FieldGet(this, prop.BackingField)
+        let position = prop.ProtoField.Position
+        match prop.TypeKind with
+        | Primitive -> 
+            match prop.ProtoField.Type with
+            | "int32" when prop.ProtoField.Rule = Required -> 
+                Expr.Application(<@@ writeInt32 position %%value @@>, buffer)
+            | _ -> Expr.Value(())
+            
+        | x ->
+            Expr.Value(()) 
+            //notsupportedf "Type kind '%A' is not supported" x
