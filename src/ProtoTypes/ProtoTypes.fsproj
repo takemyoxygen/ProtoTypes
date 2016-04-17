@@ -72,6 +72,7 @@
     <Compile Include="Prelude.fs" />
     <Compile Include="Naming.fs" />
     <Compile Include="TypesRegistry.fs" />
+    <Compile Include="Provided.fs" />    
     <Compile Include="Serialization.fs" />
     <Compile Include="TypeGen.fs" />
     <Compile Include="ProtoTypes.fs" />

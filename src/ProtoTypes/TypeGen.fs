@@ -13,29 +13,11 @@ open Froto.Parser.Model
 open Froto.Core
 open Froto.Core.Encoding
 
-type Underlying = Dictionary<string, obj>
-
-type ReadOnlyPropertyMetadata = 
+type ProtoPropertyInfo = 
     { ProvidedProperty: ProvidedProperty;
       BackingField: ProvidedField;
       ProtoField: ProtoField; }
-      
- [<RequireQualifiedAccess>]
-module Provided =
-    
-    let addEnumValues (enum: ProvidedTypeDefinition) =
-        Seq.map(fun (name, value) ->  ProvidedLiteralField(name, typeof<int>, value))
-        >> Seq.iter enum.AddMember
-        
-    let readOnlyProperty propertyType name =
-        let field = ProvidedField(Naming.pascalToCamel name, propertyType)
-        field.SetFieldAttributes(FieldAttributes.InitOnly ||| FieldAttributes.Private)
 
-        let property = ProvidedProperty(name, propertyType)
-        property.GetterCode <- (fun args -> Expr.FieldGet(args.[0], field))
-        
-        property, field
-      
 [<RequireQualifiedAccess>]
 module internal TypeGen =
 
@@ -78,7 +60,7 @@ module internal TypeGen =
         { ProvidedProperty = property; BackingField = backingField; ProtoField = field }
 
     /// Creates a constructor which intializes backing fields for the given list of properties 
-    let private createConstructor (properties: ReadOnlyPropertyMetadata list) =
+    let private createConstructor (properties: ProtoPropertyInfo list) =
         let parameters =
             properties
             |> List.map (fun prop -> ProvidedParameter(prop.BackingField.Name, prop.ProvidedProperty.PropertyType))
@@ -94,11 +76,7 @@ module internal TypeGen =
                 match fieldsMap |> Map.tryFind v.Name with
                 | Some(field) ->  Expr.FieldSet(this, field, arg)
                 | None -> failwithf "Unable to find field '%s'" v.Name
-            | _ -> Prelude.notsupportedf "Given expression is not supported: %A" arg
-
-        let add dict name value =
-            let boxed = Expr.Coerce(value, typeof<obj>)
-            <@@ (%%dict: Underlying).Add(name, %%boxed) @@>
+            | _ -> notsupportedf "Given expression is not supported: %A" arg
 
         let constructorBody args =
             let this::args = args
