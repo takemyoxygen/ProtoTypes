@@ -77,7 +77,6 @@
     <Compile Include="Serialization.fs" />
     <Compile Include="TypeGen.fs" />
     <Compile Include="ProtoTypes.fs" />
-    <None Include="Script.fsx" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

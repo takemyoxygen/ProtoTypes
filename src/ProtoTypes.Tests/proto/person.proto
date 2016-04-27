@@ -10,7 +10,6 @@ message Person {
   message Address {
       required string address1 = 1;
       required int32 house_number = 2;
-      repeated int32 whatever = 3;
   }
 
   required string name = 1;

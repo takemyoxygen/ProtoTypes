@@ -15,6 +15,10 @@ module Prelude =
         Path.Combine(path1, path2)
         
     let (+.+) scope1 scope2 = (scope1 + "." + scope2).Trim('.')
+    
+    let trace x =
+        printfn "%A" x
+        x
 
 [<RequireQualifiedAccess>]
 module Option =

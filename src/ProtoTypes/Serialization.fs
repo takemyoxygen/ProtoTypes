@@ -2,6 +2,8 @@
 
 open Microsoft.FSharp.Quotations
 
+open ProviderImplementation.ProvidedTypes
+
 open Froto.Parser.Model
 open Froto.Core
 open Froto.Core.Encoding
@@ -29,12 +31,16 @@ module Serialization =
         | Some(v) -> writeInner v
         | None -> ()
         
+    let writeOptionalEmbedded<'T when 'T :> Message> (writeInner: Message -> unit) (value: obj) =
+        if value <> null 
+        then value :?> option<'T> |> Option.get |> writeInner
+        
     let writeRepeated writeItem values =
         for value in values do writeItem value
 
     /// Serializes nested message. Uses provided "embed" function to serialize
     /// nested message content
-    let writeEmbedded fieldNumber buffer (message: #Message) = 
+    let writeEmbedded fieldNumber buffer (message: Message) = 
         buffer
         |> WireFormat.encodeTag fieldNumber WireType.LengthDelimited
         |> WireFormat.encodeVarint (uint64 message.SerializedLength)
@@ -42,14 +48,15 @@ module Serialization =
         |> ignore 
     
     let x<'T> : 'T = Unchecked.defaultof<'T>
-    let writeOptionalMethod = <@@ writeOptional x x @@> |> Expr.getMethodDef
+    let writeEmbeddedMethodDef = <@@ writeEmbedded x x x @@> |> Expr.getMethodDef
+    let writeOptionalMethodDef = <@@ writeOptional x x @@> |> Expr.getMethodDef
     let writeRepeatedMethod = <@@ writeRepeated x x @@> |> Expr.getMethodDef
-    let writeEmbeddedMethod = <@@ writeEmbedded x x x @@> |> Expr.getMethodDef
+    let writeOptional2MethodDef = <@@ writeOptionalEmbedded x x @@> |> Expr.getMethodDef
         
     let serialize (prop: ProtoPropertyInfo) buffer this =
         let value = Expr.FieldGet(this, prop.BackingField)
         
-        let undelryingType = 
+        let underlyingType = 
             if prop.BackingField.FieldType.IsGenericType
             then prop.BackingField.FieldType.GetGenericArguments().[0]
             else prop.BackingField.FieldType
@@ -66,22 +73,26 @@ module Serialization =
                     | "double" -> <@@ writeDouble position %%buffer @@>
                     | "bool" -> <@@ writeBool position %%buffer @@>
                     | x -> notsupportedf "Primitive type '%s' is not supported" x 
-                | Class -> 
-                    let value = Var("value", undelryingType)
-                    let valueExpr = Expr.Var(value)
-                    let genericWrite = writeEmbeddedMethod.MakeGenericMethod(undelryingType)
-                    let positionExpr = Expr.Value(position)
-                    let writer = Expr.Lambda(value, Expr.Call(genericWrite, [positionExpr; buffer; valueExpr]))
-                    writer
+                | Class -> <@@ writeEmbedded position %%buffer @@>
                 | Enum -> <@@ writeInt32 position %%buffer @@>
         
-        match prop.ProtoField.Rule with
-        | Required -> Expr.Application(writer, value)
-        | Optional ->
-            Expr.Call(
-                writeOptionalMethod.MakeGenericMethod(undelryingType),
-                [writer; value])
-        | Repeated ->
-            Expr.Call(
-                writeRepeatedMethod.MakeGenericMethod(undelryingType),
-                [writer; value])
+        try
+            match prop.ProtoField.Rule with
+            | Required -> Expr.Application(writer, value)
+            | Optional ->
+                match prop.TypeKind with
+                | Class ->
+                    let m = ProvidedTypeBuilder.MakeGenericMethod(writeOptional2MethodDef, [underlyingType])
+                    Expr.Call(m, [writer; Expr.Coerce(value, typeof<obj>)])
+                | _ -> 
+                    let m = writeOptionalMethodDef.MakeGenericMethod(underlyingType)
+                    Expr.Call(m, [writer; value])
+            | Repeated ->
+                printfn "Repeated field of type %O" underlyingType
+                Expr.Call(
+                    writeRepeatedMethod.MakeGenericMethod(underlyingType),
+                    [writer; value])
+        with
+        | ex -> 
+            printfn "Failed for property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex
+            reraise()
