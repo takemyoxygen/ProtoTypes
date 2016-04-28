@@ -11,7 +11,7 @@ type Sample = Proto.ProtoTypes.Sample
 
 [<Test>]
 let ``Person test``() =
-    let address = Sample.Person.Address("Street", 12)
+    let address = Sample.Person.Address("Street", 12, [1; 2; 3], [Sample.Person.IntContainer(5); Sample.Person.IntContainer(7)])
     let p = Sample.Person("Name", 1, false, 82.3, Sample.Person.Gender.Female, Some "Email", Some address)
     p.Name |> should be (equal "Name")
     p.PersonGender |> should be (equal Sample.Person.Gender.Female)

@@ -14,7 +14,7 @@ let path = __SOURCE_DIRECTORY__ + "/../ProtoTypes.Tests/proto/person.proto"
     
 type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<path>
 type Sample = ProtoBuf.ProtoTypes.Sample
-let address = Sample.Person.Address("Foo", 123)
+let address = Sample.Person.Address("Foo", 123, [1; 2; 3;], [Sample.Person.IntContainer(5); Sample.Person.IntContainer(60)])
 
 let p = Sample.Person("Name", 123, false, 102.1, Sample.Person.Gender.Male, Some "Email",  Some address)
 

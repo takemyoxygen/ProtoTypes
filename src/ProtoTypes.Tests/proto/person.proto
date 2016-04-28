@@ -7,9 +7,15 @@ message Person {
       FEMALE = 1;
   }
   
+  message IntContainer {
+      required int32 value = 1;
+  }
+  
   message Address {
       required string address1 = 1;
       required int32 house_number = 2;
+      repeated int32 whatever = 3;
+      repeated IntContainer some_ints = 4;
   }
 
   required string name = 1;

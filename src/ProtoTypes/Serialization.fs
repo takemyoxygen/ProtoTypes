@@ -37,6 +37,9 @@ module Serialization =
         
     let writeRepeated writeItem values =
         for value in values do writeItem value
+        
+    let writeRepeatedEmbedded<'T when 'T :> Message> (writeInner: Message -> unit) (value: obj) =
+        value :?> list<'T> |> List.iter writeInner
 
     /// Serializes nested message. Uses provided "embed" function to serialize
     /// nested message content
@@ -51,7 +54,8 @@ module Serialization =
     let writeEmbeddedMethodDef = <@@ writeEmbedded x x x @@> |> Expr.getMethodDef
     let writeOptionalMethodDef = <@@ writeOptional x x @@> |> Expr.getMethodDef
     let writeRepeatedMethod = <@@ writeRepeated x x @@> |> Expr.getMethodDef
-    let writeOptional2MethodDef = <@@ writeOptionalEmbedded x x @@> |> Expr.getMethodDef
+    let writeOptionalEmbeddedMethodDef = <@@ writeOptionalEmbedded x x @@> |> Expr.getMethodDef
+    let writeRepeatedEmbeddedMethodDef = <@@ writeRepeatedEmbedded x x @@> |> Expr.getMethodDef
         
     let serialize (prop: ProtoPropertyInfo) buffer this =
         let value = Expr.FieldGet(this, prop.BackingField)
@@ -82,16 +86,19 @@ module Serialization =
             | Optional ->
                 match prop.TypeKind with
                 | Class ->
-                    let m = ProvidedTypeBuilder.MakeGenericMethod(writeOptional2MethodDef, [underlyingType])
-                    Expr.Call(m, [writer; Expr.Coerce(value, typeof<obj>)])
+                    let writeOptional = ProvidedTypeBuilder.MakeGenericMethod(writeOptionalEmbeddedMethodDef, [underlyingType])
+                    Expr.Call(writeOptional, [writer; Expr.Coerce(value, typeof<obj>)])
                 | _ -> 
-                    let m = writeOptionalMethodDef.MakeGenericMethod(underlyingType)
-                    Expr.Call(m, [writer; value])
+                    let writeOptional = writeOptionalMethodDef.MakeGenericMethod(underlyingType)
+                    Expr.Call(writeOptional, [writer; value])
             | Repeated ->
-                printfn "Repeated field of type %O" underlyingType
-                Expr.Call(
-                    writeRepeatedMethod.MakeGenericMethod(underlyingType),
-                    [writer; value])
+                match prop.TypeKind with
+                | Class ->
+                    let writeRepeated = ProvidedTypeBuilder.MakeGenericMethod(writeRepeatedEmbeddedMethodDef, [underlyingType])
+                    Expr.Call(writeRepeated, [writer; Expr.Coerce(value, typeof<obj>)])
+                | _ ->
+                    let writeRepeated = writeRepeatedMethod.MakeGenericMethod(underlyingType)
+                    Expr.Call(writeRepeated, [writer; value])
         with
         | ex -> 
             printfn "Failed for property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex
