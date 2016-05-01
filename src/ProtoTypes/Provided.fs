@@ -21,3 +21,8 @@ module internal Provided =
         property.GetterCode <- (fun args -> Expr.FieldGet(args.[0], field))
         
         property, field
+
+    let readWriteProperty propertyType name = 
+        let prop, field = readOnlyProperty propertyType name
+        prop.SetterCode <- (fun args -> Expr.FieldSet(args.[0], field, args.[1]))
+        prop, field

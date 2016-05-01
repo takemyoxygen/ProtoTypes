@@ -54,7 +54,6 @@ module Serialization =
         |> message.Serialize
         |> ignore 
     
-    let x<'T> : 'T = Unchecked.defaultof<'T>
     let writeEmbeddedMethodDef = <@@ writeEmbedded x x x @@> |> Expr.getMethodDef
     let writeOptionalMethodDef = <@@ writeOptional x x @@> |> Expr.getMethodDef
     let writeRepeatedMethod = <@@ writeRepeated x x @@> |> Expr.getMethodDef

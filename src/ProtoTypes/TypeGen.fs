@@ -51,36 +51,15 @@ module internal TypeGen =
             
         let propertyName = Naming.snakeToPascal field.Name
         
-        let property, backingField = Provided.readOnlyProperty propertyType propertyName
+        let property, backingField = Provided.readWriteProperty propertyType propertyName
         
         { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
 
-    /// Creates a constructor which intializes backing fields for the given list of properties 
+    /// Creates an empty parameterless constructor
     let private createConstructor (properties: ProtoPropertyInfo list) =
+        ProvidedConstructor([], InvokeCode = (fun _ -> Expr.Value(())))
     
-        let parameters =
-            properties
-            |> List.map (fun prop -> ProvidedParameter(prop.BackingField.Name, prop.ProvidedProperty.PropertyType))
-
-        let fieldsMap = 
-            properties
-            |> Seq.map (fun prop -> prop.BackingField.Name, prop.BackingField)
-            |> Map.ofSeq
-            
-        let setField this arg = 
-            match arg with
-            | Var(v) ->
-                match fieldsMap |> Map.tryFind v.Name with
-                | Some(field) ->  Expr.FieldSet(this, field, arg)
-                | None -> failwithf "Unable to find field '%s'" v.Name
-            | _ -> notsupportedf "Given expression is not supported: %A" arg
-
-        let constructorBody args =
-            let this::args = args
-            args |> List.map (setField this) |> Expr.seq
-                
-        ProvidedConstructor(parameters, InvokeCode = constructorBody)
-    
+    /// Creates Serialize: ZeroCopyBuffer -> ZeroCopyBuffer method that writes all fields to the given buffer
     let private createSerializeMethod properties =
         let serialize =
             ProvidedMethod(
@@ -96,7 +75,8 @@ module internal TypeGen =
                         |> List.map (fun prop -> Serialization.serialize prop buffer this)
                         |> Expr.seq
                     Expr.Sequential(serializeProperties, buffer)))
-                    
+
+        // TODO check if this is still required
         serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public ||| MethodAttributes.HideBySig ||| MethodAttributes.Final ||| MethodAttributes.NewSlot)
 
         serialize

@@ -20,6 +20,9 @@ module Prelude =
         printfn "%A" x
         x
 
+    let x<'T> : 'T = Unchecked.defaultof<'T>
+
+
 [<RequireQualifiedAccess>]
 module Option =
 
