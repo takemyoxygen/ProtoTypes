@@ -5,6 +5,6 @@ bin
 obj
 paket-files
 .vs
-
+*.userprefs
 .paket/paket.exe
 
