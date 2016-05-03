@@ -22,6 +22,8 @@ module Prelude =
 
     let x<'T> : 'T = Unchecked.defaultof<'T>
 
+    let notNull = isNull >> not
+
 
 [<RequireQualifiedAccess>]
 module Option =
@@ -52,10 +54,9 @@ module Expr =
     open Microsoft.FSharp.Quotations
     open Microsoft.FSharp.Quotations.Patterns
 
-    let seq = function
-        | [] -> Expr.Value(())
-        | h::[] -> h
-        | h::t -> List.fold (fun acc e -> Expr.Sequential(acc, e)) h t
+    open ProviderImplementation.ProvidedTypes
+
+    let sequence: seq<Expr> -> Expr = Seq.reduce (fun acc s -> Expr.Sequential(acc, s))
         
     let getMethodDef = function
         | Call(_, m, _) ->
@@ -63,3 +64,37 @@ module Expr =
             then m.GetGenericMethodDefinition()
             else m
         | x -> notsupportedf "Expression %A is not supported" x
+
+    let makeGenericMethod (types: Type list) methodInfo =
+        if types |> List.exists (fun t -> t :? ProvidedTypeDefinition || (t.IsGenericType && t.GetGenericArguments() |> Seq.exists (fun gt -> gt :? ProvidedTypeDefinition)))
+        then ProvidedTypeBuilder.MakeGenericMethod(methodInfo, types)
+        else methodInfo.MakeGenericMethod(types |> Array.ofList)
+
+    let rec typeHierarchy (ty: Type) = seq {
+        if notNull ty
+        then
+            yield ty
+            yield! typeHierarchy ty.BaseType
+    }
+    
+    /// Generates an expression that iterates over a given sequence using provided body expression
+    let iterate (sequence: Expr) (body: Expr -> Expr) =
+        let elementType = 
+            typeHierarchy sequence.Type
+            |> Seq.tryFind (fun ty -> ty.IsGenericType && ty.GetGenericTypeDefinition() = typedefof<seq<_>>)
+            |> Option.map (fun ty -> ty.GetGenericArguments().[0])
+            |> Option.require "Given collection is not a seq<'T>"
+            
+        let iterMethod = <@@ Seq.iter x x @@> |> getMethodDef |> makeGenericMethod [elementType]
+        let itetVar = Var("x", elementType)
+        let bodyExpr = Expr.Lambda(itetVar, body <| Expr.Var(itetVar))
+        
+        Expr.Call(iterMethod, [bodyExpr; sequence])
+
+    let create (ty: Type) = 
+        let ctor = 
+            if ty :? ProvidedTypeDefinition then
+                ty.GetConstructors()
+                |> Seq.find(fun c -> c :? ProvidedConstructor && c.GetParameters() |> Array.isEmpty)
+            else ty.GetConstructor([||])
+        Expr.NewObject(ctor, [])

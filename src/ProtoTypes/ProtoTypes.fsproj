@@ -23,6 +23,11 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Debug\ProtoTypes.XML</DocumentationFile>
+    <StartAction>Project</StartAction>
+    <StartProgram>
+    </StartProgram>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -75,6 +80,7 @@
     <Compile Include="TypesRegistry.fs" />
     <Compile Include="Provided.fs" />
     <Compile Include="Serialization.fs" />
+    <Compile Include="Deserialization.fs" />
     <Compile Include="TypeGen.fs" />
     <Compile Include="ProtoTypes.fs" />
     <None Include="paket.references" />
