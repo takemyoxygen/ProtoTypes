@@ -65,12 +65,20 @@ module Expr =
             else m
         | x -> notsupportedf "Expression %A is not supported" x
 
+    let private isGenerated (ty: Type) =
+        ty :? ProvidedTypeDefinition || (ty.IsGenericType && ty.GetGenericArguments() |> Seq.exists (fun gt -> gt :? ProvidedTypeDefinition))
+
     let makeGenericMethod (types: Type list) methodInfo =
-        if types |> List.exists (fun t -> t :? ProvidedTypeDefinition || (t.IsGenericType && t.GetGenericArguments() |> Seq.exists (fun gt -> gt :? ProvidedTypeDefinition)))
+        if types |> List.exists isGenerated
         then ProvidedTypeBuilder.MakeGenericMethod(methodInfo, types)
         else methodInfo.MakeGenericMethod(types |> Array.ofList)
 
-    let rec typeHierarchy (ty: Type) = seq {
+    let makeGenericType (types: Type list) typeDef =
+        if types |> List.exists isGenerated
+        then ProvidedTypeBuilder.MakeGenericType(typeDef, types)
+        else typeDef.MakeGenericType(types |> Array.ofList)
+
+    let rec private typeHierarchy (ty: Type) = seq {
         if notNull ty
         then
             yield ty

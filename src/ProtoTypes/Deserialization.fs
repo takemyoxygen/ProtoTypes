@@ -38,13 +38,19 @@ module Deserialization =
         let list = list :?> ResizeArray<'T>
         list.Add item
 
+    let toList<'T> (mutableList: obj) = mutableList :?> ResizeArray<'T> |> List.ofSeq
+
+    let createResizeArray<'T>() = ResizeArray<'T>()
+
+    let create<'T when 'T: (new: unit -> 'T)>() = new 'T()
+
     let deserialize (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) (buffer: Expr) = 
-        try
+//        try
         // for repeated rules - map from property to variable
         let listVars = 
             properties
             |> Seq.filter (fun prop -> prop.ProtoField.Rule = Repeated)
-            |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, typedefof<ResizeArray<_>>.MakeGenericType(prop.ProvidedProperty.PropertyType)))
+            |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.ProvidedProperty.PropertyType.GenericTypeArguments.[0]] typedefof<ResizeArray<_>>))
             |> dict
 
         let msgVar = Var("msg", ty)
@@ -56,21 +62,24 @@ module Deserialization =
             if property.ProtoField.Rule = Repeated
             then
                 let list = Expr.Var(listVars.[property])
-               
                 let addMethod = 
-                    <@@ addToList x x @@> 
-                    |> Expr.getMethodDef 
-                    |> Expr.makeGenericMethod [list.Type.GetGenericArguments().[0]] 
+                    <@@ addToList x x @@>
+                    |> Expr.getMethodDef
+                    |> Expr.makeGenericMethod [list.Type.GenericTypeArguments.[0]]
 
                 Expr.Call(addMethod, [Expr.Coerce(list, typeof<obj>); deserializeField property field])
             else
                 Expr.PropertySet(msgExpr, property.ProvidedProperty, deserializeField property field)
                 
-        let setRepeated property var =
-            let elementTy = property.ProvidedProperty.PropertyType.GetGenericArguments().[0] 
-            let toListMethodDef = <@@ List.ofSeq x @@> |> Expr.getMethodDef
-            let toListMethod = toListMethodDef.MakeGenericMethod(elementTy)
-            Expr.PropertySet(msgExpr, property.ProvidedProperty, Expr.Call(toListMethod, [Expr.Var(var)]))
+        let setRepeated property (var: Var) =
+            let itemTy = var.Type.GenericTypeArguments.[0]
+            let toListMethod = 
+                <@@ toList x @@>
+                |> Expr.getMethodDef
+                |> Expr.makeGenericMethod [itemTy]
+
+            let list = Expr.Call(toListMethod, [Expr.Coerce(Expr.Var(var), typeof<obj>)]) 
+            Expr.PropertySet(msgExpr, property.ProvidedProperty, list)
         
         let fieldLoop = Expr.iterate <@@readFields %%buffer @@> (fun field -> 
             properties
@@ -86,19 +95,26 @@ module Deserialization =
             listVars
             |> Seq.map (fun pair -> setRepeated pair.Key pair.Value)
             |> List.ofSeq
+
+        let createListMethodDef = <@@ createResizeArray<_>() @@> |> Expr.getMethodDef
+        let createList ty = Expr.Call(Expr.makeGenericMethod [ty] createListMethodDef, [])
+        let create ty = 
+            let createMethod = <@@ create<_>() @@> |> Expr.getMethodDef |> Expr.makeGenericMethod [ty]
+            Expr.Call(createMethod, [])
             
         let listsDefinitions = 
             listVars.Values
             |> Seq.fold 
-                (fun acc var -> Expr.Let(var, Expr.create var.Type, acc))
+                (fun acc var -> Expr.Let(var, create var.Type, acc))
                 (fieldLoop :: setRepeatedFields @ [msgExpr] |> Expr.sequence)
                 
-        Expr.Let(msgVar, Expr.create ty, Expr.Var(msgVar))
-
-        with
-        | ex -> 
-            printfn "Failed to generate Deserialize method for type %s. Details: %O" ty.Name ex
-            reraise()
+//        Expr.Let(msgVar, Expr.create ty, listsDefinitions)
+        Expr.Let(msgVar, Expr.create ty, msgExpr) // TODO Implement Expr.iterate using Expr.While and uncomment the line above
+//        
+//        with
+//        | ex -> 
+//            printfn "Failed to generate Deserialize method for type %s. Details: %O" ty.Name ex
+//            reraise()
 
         // Generated expression should look like:
         //<@@
