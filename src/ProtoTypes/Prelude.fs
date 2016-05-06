@@ -1,16 +1,17 @@
 namespace ProtoTypes
 
 open System
+open System.Collections.Generic
 open System.IO
 
 [<AutoOpen>]
 module Prelude =
+
+    open Printf
     
-    let notsupportedf format args = 
-        sprintf format args
-        |> NotSupportedException
-        |> raise
-        
+    let notsupportedf fmt = 
+        ksprintf (NotSupportedException >> raise) fmt
+
     let (</>) path1 path2 = 
         Path.Combine(path1, path2)
         
@@ -51,6 +52,7 @@ module Option =
 [<RequireQualifiedAccess>]
 module Expr =
 
+    open System.Collections
     open Microsoft.FSharp.Quotations
     open Microsoft.FSharp.Quotations.Patterns
 
@@ -94,10 +96,29 @@ module Expr =
             |> Option.require "Given collection is not a seq<'T>"
             
         let iterMethod = <@@ Seq.iter x x @@> |> getMethodDef |> makeGenericMethod [elementType]
-        let itetVar = Var("x", elementType)
-        let bodyExpr = Expr.Lambda(itetVar, body <| Expr.Var(itetVar))
+        let iterVar = Var("x", elementType)
+        // let bodyExpr = Expr.Lambda(itetVar, body <| Expr.Var(itetVar))
         
-        Expr.Call(iterMethod, [bodyExpr; sequence])
+        let enumeratorVar = Var("enumerator", typedefof<IEnumerator<_>> |> makeGenericType [elementType])
+        let enumeratorExpr = Expr.Var enumeratorVar
+        
+        let moveNextMethod = typeof<IEnumerator>.GetMethod("MoveNext")
+        let disposeMethod = typeof<IDisposable>.GetMethod("Dispose")
+        
+        let whileLoop = 
+            Expr.WhileLoop(
+                Expr.Call(enumeratorExpr, moveNextMethod, []),
+                Expr.Let(
+                    iterVar, 
+                    Expr.PropertyGet(enumeratorExpr, enumeratorVar.Type.GetProperty("Current")), 
+                    body <| Expr.Var iterVar))
+        
+        // Expr.TryFinally is not really supported by FSharp.TypeProviders.StarterPack
+        // so, Expr.Sequential is used insted (Dispose() won't be called if exception is raised)
+        Expr.Let(
+            enumeratorVar, 
+            Expr.Call(sequence, sequence.Type.GetMethod("GetEnumerator"), []),
+            Expr.Sequential(whileLoop, Expr.Call(enumeratorExpr, disposeMethod, [])))
 
     let create (ty: Type) = 
         let ctor = 

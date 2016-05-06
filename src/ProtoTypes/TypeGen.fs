@@ -89,7 +89,7 @@ module internal TypeGen =
                 targetType,
                 InvokeCode = (fun args -> Deserialization.deserialize targetType properties args.[0]))
                 
-        deserializeMethod.SetMethodAttrs(MethodAttributes.Static)
+        deserializeMethod.SetMethodAttrs(MethodAttributes.Static ||| MethodAttributes.Public)
         
         deserializeMethod
     

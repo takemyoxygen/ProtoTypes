@@ -28,11 +28,3 @@ type Message() as this =
     member this.SerializedLength = size.Value
     
     abstract Serialize: ZeroCopyBuffer -> ZeroCopyBuffer
-    
-type RepeatedContainer<'T>() = 
-    inherit ResizeArray<'T>()
-    
-    member this.AddObj(x: obj) =
-        x :?> 'T |> this.Add
-    
-    member this.ToArray() = List.ofSeq this
