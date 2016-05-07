@@ -81,13 +81,25 @@ module internal TypeGen =
 
         serialize
         
+    let createReadFromMethod properties targetType = 
+        let readFrom = 
+            ProvidedMethod(
+                "LoadFrom",
+                [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)],
+                typeof<ZeroCopyBuffer>,
+                InvokeCode = (fun args -> Deserialization.readFrom targetType properties args.[0] args.[1]))
+
+        readFrom.SetMethodAttrs(MethodAttributes.Virtual)
+
+        readFrom
+        
     let createDeserializeMethod properties targetType =
         let deserializeMethod = 
             ProvidedMethod(
                 "Deserialize", 
                 [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)], 
                 targetType,
-                InvokeCode = (fun args -> Deserialization.deserialize targetType properties args.[0]))
+                InvokeCode = (fun args -> Deserialization.deserializeExpr targetType args.[0]))
                 
         deserializeMethod.SetMethodAttrs(MethodAttributes.Static ||| MethodAttributes.Public)
         
@@ -123,6 +135,10 @@ module internal TypeGen =
         let serializeMethod = createSerializeMethod properties
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
+        
+        let readFromMethod = createReadFromMethod properties providedType
+        providedType.AddMember readFromMethod
+        providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
         
         providedType.AddMember <| createDeserializeMethod properties providedType
         

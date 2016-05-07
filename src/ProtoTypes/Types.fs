@@ -28,3 +28,11 @@ type Message() as this =
     member this.SerializedLength = size.Value
     
     abstract Serialize: ZeroCopyBuffer -> ZeroCopyBuffer
+    
+    abstract ReadFrom: ZeroCopyBuffer -> ZeroCopyBuffer
+
+type internal Dummy() = 
+    inherit Message()
+    
+    override this.Serialize(buffer) = buffer
+    override this.ReadFrom(buffer) = buffer

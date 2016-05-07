@@ -20,6 +20,11 @@ module Deserialization =
         let result = ref Unchecked.defaultof<'T>
         f result field
         !result
+        
+    let deserialize<'T when 'T :> Message and 'T : (new: unit -> 'T)> buffer =
+        let x = new 'T()
+        x.ReadFrom buffer |> ignore
+        x
 
     // TODO move these methods and similar methods from Serialization to separate
     // module, something line Codec.encodeInt32/Codec.decodeInt32 etc.
@@ -27,7 +32,12 @@ module Deserialization =
     let deserializeInt = deserializeFieldValue Serializer.hydrateInt32
     let deserializeBool = deserializeFieldValue Serializer.hydrateBool
     let deserializeDouble = deserializeFieldValue Serializer.hydrateDouble
-    let deserializeEmbedded<'T when 'T :> Message> (field:RawField) = Unchecked.defaultof<'T>
+    let deserializeEmbedded<'T when 'T :> Message and 'T : (new: unit -> 'T)> (field: RawField) = 
+        match field with
+        | LengthDelimited(_, segment) ->
+            let buffer = ZeroCopyBuffer segment
+            deserialize<'T> buffer
+        | _ -> failwith "Invalid format of the field: %O" field
 
     let deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         let targetTy =
@@ -46,7 +56,7 @@ module Deserialization =
         | t when t = typeof<float> -> <@@ deserializeDouble %%rawField  @@>
         | :? ProvidedTypeDefinition -> 
             let deserializeMethod = 
-                <@@ deserializeEmbedded<_> x @@> 
+                <@@ deserializeEmbedded<Dummy> x @@> 
                 |> Expr.getMethodDef 
                 |> Expr.makeGenericMethod [targetTy]
             Expr.Call(deserializeMethod, [rawField])
@@ -65,7 +75,7 @@ module Deserialization =
 
     let create<'T when 'T: (new: unit -> 'T)>() = new 'T()
 
-    let deserialize (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) (buffer: Expr) =
+    let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =
         try
         
         // for repeated rules - map from property to variable
@@ -74,9 +84,6 @@ module Deserialization =
             |> Seq.filter (fun prop -> prop.ProtoField.Rule = Repeated)
             |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.ProvidedProperty.PropertyType.GenericTypeArguments.[0]] typedefof<ResizeArray<_>>))
             |> dict
-
-        let msgVar = Var("msg", ty)
-        let msgExpr = Expr.Var msgVar
 
         let eq field idx = <@@ (%%field: RawField).FieldNum = idx @@>
 
@@ -91,7 +98,7 @@ module Deserialization =
 
                 Expr.Call(addMethod, [Expr.Coerce(list, typeof<obj>); deserializeField property field])
             else
-                Expr.PropertySet(msgExpr, property.ProvidedProperty, deserializeField property field)
+                Expr.PropertySet(this, property.ProvidedProperty, deserializeField property field)
 
         let setRepeated property (var: Var) =
             let itemTy = var.Type.GenericTypeArguments.[0]
@@ -101,7 +108,7 @@ module Deserialization =
                 |> Expr.makeGenericMethod [itemTy]
 
             let list = Expr.Call(toListMethod, [Expr.Coerce(Expr.Var(var), typeof<obj>)])
-            Expr.PropertySet(msgExpr, property.ProvidedProperty, list)
+            Expr.PropertySet(this, property.ProvidedProperty, list)
 
         let fieldLoop = Expr.iterate <@@readFields %%buffer @@> (fun field ->
             properties
@@ -122,18 +129,103 @@ module Deserialization =
             let createMethod = <@@ create<_>() @@> |> Expr.getMethodDef |> Expr.makeGenericMethod [ty]
             Expr.Call(createMethod, [])
 
-        let listsDefinitions =
-            listVars.Values
-            |> Seq.fold
-                (fun acc var -> Expr.Let(var, create var.Type, acc))
-                (fieldLoop :: setRepeatedFields @ [msgExpr] |> Expr.sequence)
-
-        Expr.Let(msgVar, Expr.create ty, listsDefinitions)
+        listVars.Values
+        |> Seq.fold
+            (fun acc var -> Expr.Let(var, create var.Type, acc))
+            (fieldLoop :: setRepeatedFields @ [buffer] |> Expr.sequence)
 
         with
         | ex ->
            printfn "Failed to generate Deserialize method for type %s. Details: %O" ty.Name ex
            reraise()
+
+    let deserializeExpr (ty: ProvidedTypeDefinition) buffer =
+        let m = 
+            <@@ deserialize<Dummy> x @@>
+            |> Expr.getMethodDef
+            |> Expr.makeGenericMethod [ty]
+
+        Expr.Call(m, [buffer])
+//        let msgVar = Var("msg", ty)
+//        let msgExpr = Expr.Var msgVar
+//        let create = <@@ create<_> () @@> |> Expr.getMethodDef |> Expr.makeGenericMethod [ty]
+//        let readFrom = ty.GetMethod("ReadFrom")
+//        let created = Expr.Call(create, [])
+//        let read = Expr.Call(msgExpr, readFrom, [buffer])
+//        Expr.Let(
+//            msgVar, 
+//            created, 
+//            Expr.Sequential(
+//                read,
+//                msgExpr)) 
+        // try
+        
+        // // for repeated rules - map from property to variable
+        // let listVars =
+        //     properties
+        //     |> Seq.filter (fun prop -> prop.ProtoField.Rule = Repeated)
+        //     |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.ProvidedProperty.PropertyType.GenericTypeArguments.[0]] typedefof<ResizeArray<_>>))
+        //     |> dict
+
+        // let msgVar = Var("msg", ty)
+        // let msgExpr = Expr.Var msgVar
+
+        // let eq field idx = <@@ (%%field: RawField).FieldNum = idx @@>
+
+        // let set (property: ProtoPropertyInfo) (field: Expr) =
+        //     if property.ProtoField.Rule = Repeated
+        //     then
+        //         let list = Expr.Var(listVars.[property])
+        //         let addMethod =
+        //             <@@ addToList x x @@>
+        //             |> Expr.getMethodDef
+        //             |> Expr.makeGenericMethod [list.Type.GenericTypeArguments.[0]]
+
+        //         Expr.Call(addMethod, [Expr.Coerce(list, typeof<obj>); deserializeField property field])
+        //     else
+        //         Expr.PropertySet(msgExpr, property.ProvidedProperty, deserializeField property field)
+
+        // let setRepeated property (var: Var) =
+        //     let itemTy = var.Type.GenericTypeArguments.[0]
+        //     let toListMethod =
+        //         <@@ toList x @@>
+        //         |> Expr.getMethodDef
+        //         |> Expr.makeGenericMethod [itemTy]
+
+        //     let list = Expr.Call(toListMethod, [Expr.Coerce(Expr.Var(var), typeof<obj>)])
+        //     Expr.PropertySet(msgExpr, property.ProvidedProperty, list)
+
+        // let fieldLoop = Expr.iterate <@@readFields %%buffer @@> (fun field ->
+        //     properties
+        //     |> Seq.fold
+        //         (fun acc prop ->
+        //             Expr.IfThenElse(
+        //                 eq field prop.ProtoField.Position,
+        //                 set prop field,
+        //                 acc))
+        //         (Expr.Value(())))
+
+        // let setRepeatedFields =
+        //     listVars
+        //     |> Seq.map (fun pair -> setRepeated pair.Key pair.Value)
+        //     |> List.ofSeq
+
+        // let create ty =
+        //     let createMethod = <@@ create<_>() @@> |> Expr.getMethodDef |> Expr.makeGenericMethod [ty]
+        //     Expr.Call(createMethod, [])
+
+        // let listsDefinitions =
+        //     listVars.Values
+        //     |> Seq.fold
+        //         (fun acc var -> Expr.Let(var, create var.Type, acc))
+        //         (fieldLoop :: setRepeatedFields @ [msgExpr] |> Expr.sequence)
+
+        // Expr.Let(msgVar, Expr.create ty, listsDefinitions)
+
+        // with
+        // | ex ->
+        //    printfn "Failed to generate Deserialize method for type %s. Details: %O" ty.Name ex
+        //    reraise()
 
         // Generated expression should look like:
         //<@@

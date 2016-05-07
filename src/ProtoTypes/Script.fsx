@@ -21,9 +21,9 @@ let buffer = ZeroCopyBuffer(1000)
 p.Serialize(buffer)
 
 let buffer' = ZeroCopyBuffer(buffer.Array)
-let p = Sample.Person.Deserialize(buffer')
-
-p
+let p' = Sample.Person.Deserialize(buffer')
+p'.PersonAddress.Value
+let fields = ProtoTypes.Deserialization.readFields buffer' |> List.ofSeq
 
 
 
