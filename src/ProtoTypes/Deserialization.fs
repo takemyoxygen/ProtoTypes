@@ -27,29 +27,35 @@ module Deserialization =
     let deserializeInt = deserializeFieldValue Serializer.hydrateInt32
     let deserializeBool = deserializeFieldValue Serializer.hydrateBool
     let deserializeDouble = deserializeFieldValue Serializer.hydrateDouble
+    let deserializeEmbedded<'T when 'T :> Message> (field:RawField) = Unchecked.defaultof<'T>
 
     let deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         let targetTy =
-            if property.ProtoField.Rule = Repeated
-            then property.ProvidedProperty.PropertyType.GetGenericArguments().[0]
-            else property.ProvidedProperty.PropertyType
+            match property.ProtoField.Rule with
+            | Repeated | Optional -> 
+                property.ProvidedProperty.PropertyType.GetGenericArguments().[0]
+            | _ -> property.ProvidedProperty.PropertyType
             
         let intType = typeof<int>
             
-        let deserialize = 
-            match targetTy with
-            | t when t = typeof<int> -> <@@ deserializeInt @@>
-            | t when t = typeof<string> -> <@@ deserializeString @@>
-            | t when t = typeof<bool> -> <@@ deserializeBool @@>
-            | t when t = typeof<float> -> <@@ deserializeDouble @@>
-            | _ -> notsupportedf "Deserialization of field %s of type %s is not supported" property.ProtoField.Name targetTy.Name 
+        
+        match targetTy with
+        | t when t = typeof<int> -> <@@ deserializeInt %%rawField @@>
+        | t when t = typeof<string> -> <@@ deserializeString %%rawField  @@>
+        | t when t = typeof<bool> -> <@@ deserializeBool %%rawField  @@>
+        | t when t = typeof<float> -> <@@ deserializeDouble %%rawField  @@>
+        | :? ProvidedTypeDefinition -> 
+            let deserializeMethod = 
+                <@@ deserializeEmbedded<_> x @@> 
+                |> Expr.getMethodDef 
+                |> Expr.makeGenericMethod [targetTy]
+            Expr.Call(deserializeMethod, [rawField])
+        | _ -> notsupportedf "Deserialization of field %s of type %s is not supported" property.ProtoField.Name targetTy.Name 
 
-        let def =
-            <@@ Unchecked.defaultof<_> @@>
-            |> Expr.getMethodDef
-            |> Expr.makeGenericMethod [targetTy]
-            
-        Expr.Call(def, [])
+        // let def =
+        //     <@@ Unchecked.defaultof<_> @@>
+        //     |> Expr.getMethodDef
+        //     |> Expr.makeGenericMethod [targetTy]
 
     let addToList<'T> (list: obj) (item: 'T) =
         let list = list :?> ResizeArray<'T>

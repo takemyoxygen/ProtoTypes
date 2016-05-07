@@ -21,7 +21,9 @@ let buffer = ZeroCopyBuffer(1000)
 p.Serialize(buffer)
 
 let buffer' = ZeroCopyBuffer(buffer.Array)
-Sample.Person.Deserialize(buffer')
-typeof<Sample.Person>.GetMethods(System.Reflection.BindingFlags.Static) |> Seq.iter (fun m -> printfn "%s" m.Name)
+let p = Sample.Person.Deserialize(buffer')
 
-buffer
+p
+
+
+
