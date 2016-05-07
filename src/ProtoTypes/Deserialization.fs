@@ -74,6 +74,8 @@ module Deserialization =
     let toList<'T> (mutableList: obj) = mutableList :?> ResizeArray<'T> |> List.ofSeq
 
     let create<'T when 'T: (new: unit -> 'T)>() = new 'T()
+    
+    let some x = Some x
 
     let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =
         try
@@ -88,17 +90,20 @@ module Deserialization =
         let eq field idx = <@@ (%%field: RawField).FieldNum = idx @@>
 
         let set (property: ProtoPropertyInfo) (field: Expr) =
-            if property.ProtoField.Rule = Repeated
-            then
+            let value = deserializeField property field
+            if property.ProtoField.Rule = Repeated then
                 let list = Expr.Var(listVars.[property])
                 let addMethod =
                     <@@ addToList x x @@>
                     |> Expr.getMethodDef
                     |> Expr.makeGenericMethod [list.Type.GenericTypeArguments.[0]]
 
-                Expr.Call(addMethod, [Expr.Coerce(list, typeof<obj>); deserializeField property field])
+                Expr.Call(addMethod, [Expr.Coerce(list, typeof<obj>); value])
+            elif property.ProtoField.Rule = Optional then
+                let some = <@@ some x @@> |> Expr.getMethodDef |> Expr.makeGenericMethod [value.Type]
+                Expr.PropertySet(this, property.ProvidedProperty, Expr.Call(some, [value]))
             else
-                Expr.PropertySet(this, property.ProvidedProperty, deserializeField property field)
+                Expr.PropertySet(this, property.ProvidedProperty, value)
 
         let setRepeated property (var: Var) =
             let itemTy = var.Type.GenericTypeArguments.[0]

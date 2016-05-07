@@ -18,12 +18,10 @@ let address = Sample.Person.Address(Address1 = "Street", HouseNumber = 12, Whate
 let p = Sample.Person(Name = "Name", Id = 1, HasCriminalConvictions = false, Weight = 82.3, PersonGender = Sample.Person.Gender.Female, Email = Some "Email", PersonAddress = Some address)
 
 let buffer = ZeroCopyBuffer(1000)
+
 p.Serialize(buffer)
 
-let buffer' = ZeroCopyBuffer(buffer.Array)
-let p' = Sample.Person.Deserialize(buffer')
-p'.PersonAddress.Value
-let fields = ProtoTypes.Deserialization.readFields buffer' |> List.ofSeq
+let buffer2 = ZeroCopyBuffer(buffer.AsArraySegment)
 
-
-
+let p2 = Sample.Person.Deserialize buffer2
+p2.Weight
