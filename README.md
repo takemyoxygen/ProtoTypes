@@ -9,10 +9,9 @@ Some links:
 2. [FSharpx.Extras branch](https://github.com/fsprojects/FSharpx.Extras/tree/protobuf) where attempt to sketch a type provider was made
 3. [Froto](https://github.com/ctaggart/froto) - a tool that parses and generates code from `.proto` files. Parsing files and creating ASTs might be re-used in type provider implementation. 
 
-Plan so far:
-
-1. Implement simple generation of types based on [Froto.Parser](https://www.nuget.org/packages/Froto.Parser/0.2.0-b030). Most likely it will be a set of immutable types with public constructors.
-2. Implement serialization/deserialization to/from byte array.
-3. See what's next.
+Current state:
+1. Generative type provider with basic support of generating types from single `.proto` file, serialization and deserialization.
+2. Supports `proto2` syntax only. `required` fields are represented as regular properties, `optional` fields are mapped to properties of type `option<'T>`, and `repeated` fields correspond to `list<'T>` properties.
+3. Supports embedded messages, and enums. List of supported scalar types includes `int32`, `string`, `bool` and `double`
 
 As disscussed [here](https://github.com/ctaggart/froto/issues/3), this repository migth eventually become part of Froto.
