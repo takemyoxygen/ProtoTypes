@@ -50,12 +50,9 @@ module Expr =
             |> Option.map (fun ty -> ty.GetGenericArguments().[0])
             |> Option.require "Given collection is not a seq<'T>"
             
-        let iterMethod = <@@ Seq.iter x x @@> |> getMethodDef |> makeGenericMethod [elementType]
         let iterVar = Var("x", elementType)
-        
         let enumeratorVar = Var("enumerator", typedefof<IEnumerator<_>> |> makeGenericType [elementType])
         let enumeratorExpr = Expr.Var enumeratorVar
-        
         let moveNextMethod = typeof<IEnumerator>.GetMethod("MoveNext")
         let disposeMethod = typeof<IDisposable>.GetMethod("Dispose")
         
