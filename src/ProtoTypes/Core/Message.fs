@@ -1,21 +1,11 @@
-namespace ProtoTypes
+namespace ProtoTypes.Core
 
-open ProviderImplementation.ProvidedTypes
-
-open Froto.Parser.Model
 open Froto.Core
 
-type TypeKind = 
-    | Primitive
-    | Class
-    | Enum
+// Eventually, this class might be replaced by Froto.Core.Encoding.MessageBase, but so far
+// this interface looks simpler and satisfies all needs.
 
-type ProtoPropertyInfo = 
-    { ProvidedProperty: ProvidedProperty;
-      BackingField: ProvidedField;
-      ProtoField: ProtoField; 
-      TypeKind: TypeKind}
-
+/// Base class for types generated from proto messages.
 [<AbstractClass>]
 type Message() as this =
  
@@ -31,6 +21,9 @@ type Message() as this =
     
     abstract ReadFrom: ZeroCopyBuffer -> ZeroCopyBuffer
 
+/// Simple implementation of Message class that does nothing useful
+/// Basically, this class is needed only for type inference within quotations, because it satisfies requirements
+/// to be inherited from Message and to have constructor without parameters
 type internal Dummy() = 
     inherit Message()
     

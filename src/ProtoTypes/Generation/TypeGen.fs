@@ -1,4 +1,4 @@
-namespace ProtoTypes
+namespace ProtoTypes.Generation
 
 open System
 open System.Reflection

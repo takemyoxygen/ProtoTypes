@@ -1,4 +1,4 @@
-namespace ProtoTypes
+namespace ProtoTypes.Generation
 
 open ProtoTypes.Core
 open ProviderImplementation.ProvidedTypes

@@ -1,4 +1,4 @@
-﻿namespace ProtoTypes
+﻿namespace ProtoTypes.Generation
 
 open Microsoft.FSharp.Quotations
 

@@ -1,9 +1,9 @@
-namespace ProtoTypes
+namespace ProtoTypes.Generation
 
 open System.Reflection
+open FSharp.Quotations
 
-open Microsoft.FSharp.Quotations
-
+open ProtoTypes.Core
 open ProviderImplementation.ProvidedTypes
 
 [<RequireQualifiedAccess>]

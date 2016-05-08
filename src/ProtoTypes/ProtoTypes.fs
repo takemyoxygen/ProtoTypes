@@ -5,6 +5,7 @@ open System.IO
 open System.Reflection
 
 open ProtoTypes.Core
+open ProtoTypes.Generation
 open ProviderImplementation
 open ProviderImplementation.ProvidedTypes
 open ProviderImplementation.ProvidedTypesTesting

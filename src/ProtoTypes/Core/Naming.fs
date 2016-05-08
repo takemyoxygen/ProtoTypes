@@ -1,4 +1,4 @@
-﻿namespace ProtoTypes
+﻿namespace ProtoTypes.Core
 
 open System
 

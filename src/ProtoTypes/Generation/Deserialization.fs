@@ -1,4 +1,4 @@
-﻿namespace ProtoTypes
+﻿namespace ProtoTypes.Generation
 
 open System
 open FSharp.Quotations
@@ -21,7 +21,7 @@ module Deserialization =
         let result = ref Unchecked.defaultof<'T>
         f result field
         !result
-        
+
     let deserialize<'T when 'T :> Message and 'T : (new: unit -> 'T)> buffer =
         let x = new 'T()
         x.ReadFrom buffer |> ignore
@@ -35,10 +35,8 @@ module Deserialization =
     let deserializeDouble = deserializeFieldValue Serializer.hydrateDouble
     let deserializeEmbedded<'T when 'T :> Message and 'T : (new: unit -> 'T)> (field: RawField) = 
         match field with
-        | LengthDelimited(_, segment) ->
-            let buffer = ZeroCopyBuffer segment
-            deserialize<'T> buffer
-        | _ -> failwith "Invalid format of the field: %O" field
+        | LengthDelimited(_, segment) -> ZeroCopyBuffer segment |> deserialize<'T>
+        | _ -> failwithf "Invalid format of the field: %O" field
 
     let deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         let targetTy =
