@@ -1,65 +1,19 @@
-namespace ProtoTypes
+namespace ProtoTypes.Core
 
 open System
+open System.Collections
 open System.Collections.Generic
-open System.IO
 
-[<AutoOpen>]
-module Prelude =
+open FSharp.Quotations
+open FSharp.Quotations.Patterns
 
-    open Printf
-    
-    let notsupportedf fmt = 
-        ksprintf (NotSupportedException >> raise) fmt
+open ProviderImplementation.ProvidedTypes
 
-    let (</>) path1 path2 = 
-        Path.Combine(path1, path2)
-        
-    let (+.+) scope1 scope2 = (scope1 + "." + scope2).Trim('.')
-    
-    let trace x =
-        printfn "%A" x
-        x
-
-    let x<'T> : 'T = Unchecked.defaultof<'T>
-
-    let notNull = isNull >> not
-
-
-[<RequireQualifiedAccess>]
-module Option =
-
-    /// Invokes function if provided option is None, otherwise returns original value of the provided option
-    let otherwise f opt =
-        match opt with
-        | None -> f()
-        | x -> x 
-        
-    /// If provided option is Some - it's value is returned, otherwise an exception with provided error message is thrown
-    let require msg = function
-        | Some(x) -> x
-        | None -> failwith msg
-        
-    let getOrElse alternative = function
-        | Some(x) -> x
-        | None -> alternative
-        
-    let unwrap = function
-        | Some(Some(x)) -> Some x
-        | _ -> None
-        
-        
 [<RequireQualifiedAccess>]
 module Expr =
 
-    open System.Collections
-    open Microsoft.FSharp.Quotations
-    open Microsoft.FSharp.Quotations.Patterns
-
-    open ProviderImplementation.ProvidedTypes
-
     let sequence: seq<Expr> -> Expr = Seq.reduce (fun acc s -> Expr.Sequential(acc, s))
-        
+
     let getMethodDef = function
         | Call(_, m, _) ->
             if m.IsGenericMethod
@@ -68,7 +22,8 @@ module Expr =
         | x -> notsupportedf "Expression %A is not supported" x
 
     let private isGenerated (ty: Type) =
-        ty :? ProvidedTypeDefinition || (ty.IsGenericType && ty.GetGenericArguments() |> Seq.exists (fun gt -> gt :? ProvidedTypeDefinition))
+        ty :? ProvidedTypeDefinition || 
+        (ty.IsGenericType && ty.GetGenericArguments() |> Seq.exists (fun gt -> gt :? ProvidedTypeDefinition))
 
     let makeGenericMethod (types: Type list) methodInfo =
         if types |> List.exists isGenerated
@@ -97,7 +52,6 @@ module Expr =
             
         let iterMethod = <@@ Seq.iter x x @@> |> getMethodDef |> makeGenericMethod [elementType]
         let iterVar = Var("x", elementType)
-        // let bodyExpr = Expr.Lambda(itetVar, body <| Expr.Var(itetVar))
         
         let enumeratorVar = Var("enumerator", typedefof<IEnumerator<_>> |> makeGenericType [elementType])
         let enumeratorExpr = Expr.Var enumeratorVar

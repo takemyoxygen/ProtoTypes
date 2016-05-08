@@ -2,6 +2,7 @@
 
 open Microsoft.FSharp.Quotations
 
+open ProtoTypes.Core
 open ProviderImplementation.ProvidedTypes
 
 open Froto.Parser.Model

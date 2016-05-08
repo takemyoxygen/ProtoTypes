@@ -78,7 +78,9 @@
       <Paket>True</Paket>
       <Link>external/ProvidedTypesTesting.fs</Link>
     </Compile>
-    <Compile Include="Prelude.fs" />
+    <Compile Include="Core/Prelude.fs" />
+    <Compile Include="Core/Option.fs" />
+    <Compile Include="Core/Expr.fs" />
     <Compile Include="Naming.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="TypesRegistry.fs" />

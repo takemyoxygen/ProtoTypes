@@ -1,5 +1,6 @@
 namespace ProtoTypes
 
+open ProtoTypes.Core
 open ProviderImplementation.ProvidedTypes
 
 open Froto.Parser.Model
