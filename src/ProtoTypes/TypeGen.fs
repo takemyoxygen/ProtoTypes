@@ -56,7 +56,7 @@ module internal TypeGen =
         { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
 
     /// Creates an empty parameterless constructor
-    let private createConstructor (properties: ProtoPropertyInfo list) =
+    let private createConstructor () =
         ProvidedConstructor([], InvokeCode = (fun _ -> Expr.Value(())))
     
     /// Creates Serialize: ZeroCopyBuffer -> ZeroCopyBuffer method that writes all fields to the given buffer
@@ -73,13 +73,37 @@ module internal TypeGen =
                         properties
                         |> List.sortBy (fun prop -> prop.ProtoField.Position)
                         |> List.map (fun prop -> Serialization.serialize prop buffer this)
-                        |> Expr.seq
+                        |> Expr.sequence
                     Expr.Sequential(serializeProperties, buffer)))
 
         // TODO check if this is still required
         serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public ||| MethodAttributes.HideBySig ||| MethodAttributes.Final ||| MethodAttributes.NewSlot)
 
         serialize
+        
+    let createReadFromMethod properties targetType = 
+        let readFrom = 
+            ProvidedMethod(
+                "LoadFrom",
+                [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)],
+                typeof<ZeroCopyBuffer>,
+                InvokeCode = (fun args -> Deserialization.readFrom targetType properties args.[0] args.[1]))
+
+        readFrom.SetMethodAttrs(MethodAttributes.Virtual)
+
+        readFrom
+        
+    let createDeserializeMethod properties targetType =
+        let deserializeMethod = 
+            ProvidedMethod(
+                "Deserialize", 
+                [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)], 
+                targetType,
+                InvokeCode = (fun args -> Deserialization.deserializeExpr targetType args.[0]))
+                
+        deserializeMethod.SetMethodAttrs(MethodAttributes.Static ||| MethodAttributes.Public)
+        
+        deserializeMethod
     
     let private createEnum scope lookup (enum: ProtoEnum) =
         let _, providedEnum = 
@@ -106,10 +130,18 @@ module internal TypeGen =
             |> List.map (createProperty nestedScope lookup)
 
         properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
-        providedType.AddMember <| createConstructor properties
+        providedType.AddMember <| createConstructor()
+        
         let serializeMethod = createSerializeMethod properties
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
+        
+        let readFromMethod = createReadFromMethod properties providedType
+        providedType.AddMember readFromMethod
+        providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
+        
+        providedType.AddMember <| createDeserializeMethod properties providedType
+        
         providedType
     
     /// For the given package e.g. "foo.bar.baz.abc" creates a hierarchy of nested types Foo.Bar.Baz.Abc 

@@ -14,11 +14,14 @@ let path = __SOURCE_DIRECTORY__ + "/../ProtoTypes.Tests/proto/person.proto"
     
 type ProtoBuf = ProtoTypes.ProtocolBuffersTypeProvider<path>
 type Sample = ProtoBuf.ProtoTypes.Sample
-let address = Sample.Person.Address("Foo", 123, [1; 2; 3;], [Sample.Person.IntContainer(5); Sample.Person.IntContainer(60)])
-
-let p = Sample.Person("Name", 123, false, 102.1, Sample.Person.Gender.Male, Some "Email",  Some address)
+let address = Sample.Person.Address(Address1 = "Street", HouseNumber = 12, Whatever = [1; 2; 3], SomeInts = [Sample.Person.IntContainer(Value = 5); Sample.Person.IntContainer(Value = 7)])
+let p = Sample.Person(Name = "Name", Id = 1, HasCriminalConvictions = false, Weight = 82.3, PersonGender = Sample.Person.Gender.Female, Email = Some "Email", PersonAddress = Some address)
 
 let buffer = ZeroCopyBuffer(1000)
+
 p.Serialize(buffer)
 
-buffer
+let buffer2 = ZeroCopyBuffer(buffer.AsArraySegment)
+
+let p2 = Sample.Person.Deserialize buffer2
+p2.Weight
