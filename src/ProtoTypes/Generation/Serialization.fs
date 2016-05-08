@@ -13,62 +13,10 @@ open Froto.Core.Encoding
 /// So far, this module is a simple wrapper around Froto.Core.Encoding.Serializer.dehydrateXXX family of inlined functions.
 /// Such wrapper is needed, because apprently erased type provides don't support direct calls of inlined functions.
 module Serialization = 
-
-    let writeInt32 fieldNumber buffer (value: int) =
-        Serializer.dehydrateVarint fieldNumber value buffer |> ignore
-        
-    let writeString fieldNumber buffer value =
-        Serializer.dehydrateString fieldNumber value buffer |> ignore
-        
-    let writeBool fieldNumber buffer value =
-        Serializer.dehydrateBool fieldNumber value buffer |> ignore
-        
-    let writeDouble fieldNumber buffer value =
-        Serializer.dehydrateDouble fieldNumber value buffer |> ignore
-        
-    /// Serializes optional field using provided function to handle inner value if present
-    let writeOptional writeInner value =
-        match value with
-        | Some(v) -> writeInner v
-        | None -> ()
-        
-    /// Value is expected to be of type option<'T>. It's not possible
-    /// to use this type directly in the signature because of type providers limitations.
-    /// All optional non-generated types (i.e. primitive types and enums) should be serialized using
-    /// more strongly-typed writeOptional function
-    let writeOptionalEmbedded<'T when 'T :> Message> (writeInner: Message -> unit) (value: obj) =
-        if value <> null 
-        then value :?> option<'T> |> Option.get |> writeInner
-        
-    let writeRepeated writeItem values =
-        for value in values do writeItem value
-        
-    let writeRepeatedEmbedded<'T when 'T :> Message> (writeInner: Message -> unit) (value: obj) =
-        value :?> list<'T> |> List.iter writeInner
-
-    /// Serializes nested message. Uses provided "embed" function to serialize
-    /// nested message content
-    let writeEmbedded fieldNumber buffer (message: Message) = 
-        buffer
-        |> WireFormat.encodeTag fieldNumber WireType.LengthDelimited
-        |> WireFormat.encodeVarint (uint64 message.SerializedLength)
-        |> message.Serialize
-        |> ignore 
-    
-    let writeEmbeddedMethodDef = <@@ writeEmbedded x x x @@> |> Expr.getMethodDef
-    let writeOptionalMethodDef = <@@ writeOptional x x @@> |> Expr.getMethodDef
-    let writeRepeatedMethod = <@@ writeRepeated x x @@> |> Expr.getMethodDef
-    let writeOptionalEmbeddedMethodDef = <@@ writeOptionalEmbedded x x @@> |> Expr.getMethodDef
-    let writeRepeatedEmbeddedMethodDef = <@@ writeRepeatedEmbedded x x @@> |> Expr.getMethodDef
         
     let serialize (prop: ProtoPropertyInfo) buffer this =
-        let value = Expr.FieldGet(this, prop.BackingField)
-        
-        let underlyingType = 
-            if prop.BackingField.FieldType.IsGenericType
-            then prop.BackingField.FieldType.GetGenericArguments().[0]
-            else prop.BackingField.FieldType
-            
+        let value = Expr.PropertyGet(this, prop.ProvidedProperty)
+
         let position = prop.ProtoField.Position
         
         // writer is an expression that represents a function 'T -> unit for any primitive or enum field of type 'T
@@ -77,34 +25,32 @@ module Serialization =
         let writer =
             match prop.TypeKind with
                 | Primitive -> 
-                    match prop.ProtoField.Type with
-                    | "int32" -> <@@ writeInt32 position %%buffer@@>
-                    | "string" -> <@@ writeString position %%buffer @@>
-                    | "double" -> <@@ writeDouble position %%buffer @@>
-                    | "bool" -> <@@ writeBool position %%buffer @@>
-                    | x -> notsupportedf "Primitive type '%s' is not supported" x 
-                | Class -> <@@ writeEmbedded position %%buffer @@>
-                | Enum -> <@@ writeInt32 position %%buffer @@>
-        
+                    match prop.UnderlyingType with
+                    | t when t = typeof<int> -> <@@ Codec.writeInt32 position %%buffer@@>
+                    | t when t = typeof<string> -> <@@ Codec.writeString position %%buffer @@>
+                    | t when t = typeof<float> -> <@@ Codec.writeDouble position %%buffer @@>
+                    | t when t = typeof<bool> -> <@@ Codec.writeBool position %%buffer @@>
+                    | x -> notsupportedf "Primitive type '%s' is not supported" x.Name
+                | Class -> <@@ Codec.writeEmbedded position %%buffer @@>
+                | Enum -> <@@ Codec.writeInt32 position %%buffer @@>
+                
+        let write f value = 
+            f
+            |> Expr.getMethodDef
+            |> Expr.makeGenericMethod [prop.UnderlyingType]
+            |> Expr.callStatic [writer; value]
+
         try
             match prop.ProtoField.Rule with
             | Required -> Expr.Application(writer, value)
             | Optional ->
                 match prop.TypeKind with
-                | Class ->
-                    let writeOptional = Expr.makeGenericMethod [underlyingType] writeOptionalEmbeddedMethodDef
-                    Expr.Call(writeOptional, [writer; Expr.Coerce(value, typeof<obj>)])
-                | _ -> 
-                    let writeOptional = Expr.makeGenericMethod [underlyingType] writeOptionalMethodDef
-                    Expr.Call(writeOptional, [writer; value])
+                | Class -> write <@@ Codec.writeOptionalEmbedded x x @@> <| Expr.Coerce(value, typeof<obj>)
+                | _ -> write <@@ Codec.writeOptional x x @@> value
             | Repeated ->
                 match prop.TypeKind with
-                | Class ->
-                    let writeRepeated = Expr.makeGenericMethod [underlyingType] writeRepeatedEmbeddedMethodDef
-                    Expr.Call(writeRepeated, [writer; Expr.Coerce(value, typeof<obj>)])
-                | _ ->
-                    let writeRepeated = Expr.makeGenericMethod [underlyingType] writeRepeatedMethod
-                    Expr.Call(writeRepeated, [writer; value])
+                | Class -> write <@@ Codec.writeRepeatedEmbedded x x @@> <| Expr.Coerce(value, typeof<obj>)
+                | _ -> write <@@ Codec.writeRepeated x x @@> value
         with
         | ex -> 
             printfn "Failed for property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex

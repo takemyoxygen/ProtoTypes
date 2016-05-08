@@ -24,3 +24,5 @@ module Option =
     let unwrap = function
         | Some(Some(x)) -> Some x
         | _ -> None
+        
+    let some x = Some x

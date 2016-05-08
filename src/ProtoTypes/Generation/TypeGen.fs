@@ -56,10 +56,6 @@ module internal TypeGen =
         
         { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
 
-    /// Creates an empty parameterless constructor
-    let private createConstructor () =
-        ProvidedConstructor([], InvokeCode = (fun _ -> Expr.Value(())))
-    
     /// Creates Serialize: ZeroCopyBuffer -> ZeroCopyBuffer method that writes all fields to the given buffer
     let private createSerializeMethod properties =
         let serialize =
@@ -77,8 +73,7 @@ module internal TypeGen =
                         |> Expr.sequence
                     Expr.Sequential(serializeProperties, buffer)))
 
-        // TODO check if this is still required
-        serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public ||| MethodAttributes.HideBySig ||| MethodAttributes.Final ||| MethodAttributes.NewSlot)
+        serialize.SetMethodAttrs(MethodAttributes.Virtual)
 
         serialize
         
@@ -126,12 +121,10 @@ module internal TypeGen =
         message.Enums |> Seq.map (createEnum nestedScope lookup) |> Seq.iter providedType.AddMember
         message.Messages |> Seq.map (createType nestedScope lookup) |> Seq.iter providedType.AddMember
 
-        let properties = 
-            message.Fields 
-            |> List.map (createProperty nestedScope lookup)
+        let properties = message.Fields |> List.map (createProperty nestedScope lookup)
 
         properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
-        providedType.AddMember <| createConstructor()
+        providedType.AddMember <| Provided.ctor()
         
         let serializeMethod = createSerializeMethod properties
         providedType.AddMember serializeMethod

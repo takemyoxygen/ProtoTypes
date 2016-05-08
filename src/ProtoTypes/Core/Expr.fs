@@ -73,3 +73,5 @@ module Expr =
             enumeratorVar, 
             Expr.Call(sequence, sequence.Type.GetMethod("GetEnumerator"), []),
             Expr.Sequential(whileLoop, Expr.Call(enumeratorExpr, disposeMethod, [])))
+
+    let callStatic parameters staticMethod = Expr.Call(staticMethod, parameters)
