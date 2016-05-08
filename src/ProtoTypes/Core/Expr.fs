@@ -43,7 +43,7 @@ module Expr =
     }
     
     /// Generates an expression that iterates over a given sequence using provided body expression
-    let iterate (sequence: Expr) (body: Expr -> Expr) =
+    let forLoop (sequence: Expr) (body: Expr -> Expr) =
         let elementType = 
             typeHierarchy sequence.Type
             |> Seq.tryFind (fun ty -> ty.IsGenericType && ty.GetGenericTypeDefinition() = typedefof<seq<_>>)
@@ -73,11 +73,3 @@ module Expr =
             enumeratorVar, 
             Expr.Call(sequence, sequence.Type.GetMethod("GetEnumerator"), []),
             Expr.Sequential(whileLoop, Expr.Call(enumeratorExpr, disposeMethod, [])))
-
-    let create (ty: Type) = 
-        let ctor = 
-            if ty :? ProvidedTypeDefinition then
-                ty.GetConstructors()
-                |> Seq.find(fun c -> c :? ProvidedConstructor && c.GetParameters() |> Array.isEmpty)
-            else ty.GetConstructor([||])
-        Expr.NewObject(ctor, [])

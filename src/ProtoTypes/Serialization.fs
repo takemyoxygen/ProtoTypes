@@ -92,18 +92,18 @@ module Serialization =
             | Optional ->
                 match prop.TypeKind with
                 | Class ->
-                    let writeOptional = ProvidedTypeBuilder.MakeGenericMethod(writeOptionalEmbeddedMethodDef, [underlyingType])
+                    let writeOptional = Expr.makeGenericMethod [underlyingType] writeOptionalEmbeddedMethodDef
                     Expr.Call(writeOptional, [writer; Expr.Coerce(value, typeof<obj>)])
                 | _ -> 
-                    let writeOptional = writeOptionalMethodDef.MakeGenericMethod(underlyingType)
+                    let writeOptional = Expr.makeGenericMethod [underlyingType] writeOptionalMethodDef
                     Expr.Call(writeOptional, [writer; value])
             | Repeated ->
                 match prop.TypeKind with
                 | Class ->
-                    let writeRepeated = ProvidedTypeBuilder.MakeGenericMethod(writeRepeatedEmbeddedMethodDef, [underlyingType])
+                    let writeRepeated = Expr.makeGenericMethod [underlyingType] writeRepeatedEmbeddedMethodDef
                     Expr.Call(writeRepeated, [writer; Expr.Coerce(value, typeof<obj>)])
                 | _ ->
-                    let writeRepeated = writeRepeatedMethod.MakeGenericMethod(underlyingType)
+                    let writeRepeated = Expr.makeGenericMethod [underlyingType] writeRepeatedMethod
                     Expr.Call(writeRepeated, [writer; value])
         with
         | ex -> 

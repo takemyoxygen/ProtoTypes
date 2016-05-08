@@ -61,12 +61,7 @@ module Deserialization =
                 |> Expr.getMethodDef 
                 |> Expr.makeGenericMethod [targetTy]
             Expr.Call(deserializeMethod, [rawField])
-        | _ -> notsupportedf "Deserialization of field %s of type %s is not supported" property.ProtoField.Name targetTy.Name 
-
-        // let def =
-        //     <@@ Unchecked.defaultof<_> @@>
-        //     |> Expr.getMethodDef
-        //     |> Expr.makeGenericMethod [targetTy]
+        | _ -> notsupportedf "Deserialization of field %s of type %s is not supported yet" property.ProtoField.Name targetTy.Name 
 
     let addToList<'T> (list: obj) (item: 'T) =
         let list = list :?> ResizeArray<'T>
@@ -116,7 +111,7 @@ module Deserialization =
             let list = Expr.Call(toListMethod, [Expr.Coerce(Expr.Var(var), typeof<obj>)])
             Expr.PropertySet(this, property.ProvidedProperty, list)
 
-        let fieldLoop = Expr.iterate <@@readFields %%buffer @@> (fun field ->
+        let fieldLoop = Expr.forLoop <@@readFields %%buffer @@> (fun field ->
             properties
             |> Seq.fold
                 (fun acc prop ->

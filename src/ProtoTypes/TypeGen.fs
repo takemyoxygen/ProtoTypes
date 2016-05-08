@@ -32,8 +32,8 @@ module internal TypeGen =
     let private applyRule rule (fieldType: Type) = 
         match rule with
         | Required -> fieldType
-        | Optional -> typedefof<option<_>>.MakeGenericType(fieldType)
-        | Repeated -> typedefof<list<_>>.MakeGenericType(fieldType)
+        | Optional -> Expr.makeGenericType [fieldType] typedefof<option<_>> 
+        | Repeated -> Expr.makeGenericType [fieldType] typedefof<list<_>>
 
     let private createProperty scope (lookup: TypesLookup) (field: ProtoField) =
 
