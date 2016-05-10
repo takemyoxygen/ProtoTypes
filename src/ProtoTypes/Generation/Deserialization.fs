@@ -53,10 +53,15 @@ module Deserialization =
             match property.ProtoField.Rule with
             | Repeated -> 
                 let list = Expr.Var(resizeArrays.[property])
-                Expr.callStaticGeneric 
-                    [list.Type.GenericTypeArguments.[0]]
-                    [Expr.Coerce(list, typeof<obj>); value]
-                    <@@ ResizeArray.add x x @@>
+                match property.TypeKind with
+                | Class ->
+                    Expr.callStaticGeneric 
+                        [list.Type.GenericTypeArguments.[0]]
+                        [Expr.Coerce(list, typeof<obj>); value]
+                        <@@ ResizeArray.add x x @@>
+                | _ ->
+                    let addMethod = list.Type.GetMethod("Add")
+                    Expr.Call(list, addMethod, [value])
             | Optional ->
                 let someValue = Expr.callStaticGeneric [value.Type] [value] <@@ Option.some x @@> 
                 Expr.PropertySet(this, property.ProvidedProperty, someValue)
@@ -64,14 +69,17 @@ module Deserialization =
                 Expr.PropertySet(this, property.ProvidedProperty, value)
 
         /// Converts ResizeArray to immutable list and sets corresponding repeated property
-        let setRepeatedProperty property (var: Var) =
-            let itemTy = var.Type.GenericTypeArguments.[0]
-
+        let setRepeatedProperty property (resizeArrayVar: Var) =
+            let itemTy = resizeArrayVar.Type.GenericTypeArguments.[0]
             let list = 
-                Expr.callStaticGeneric 
-                    [itemTy] 
-                    [Expr.Coerce(Expr.Var(var), typeof<obj>)]
-                    <@@ ResizeArray.toList x @@> 
+                match property.TypeKind with
+                | Class ->
+                    Expr.callStaticGeneric 
+                        [itemTy] 
+                        [Expr.Coerce(Expr.Var(resizeArrayVar), typeof<obj>)]
+                        <@@ ResizeArray.toList x @@> 
+                | _ -> 
+                    Expr.callStaticGeneric [itemTy] [Expr.Var(resizeArrayVar)] <@@ List.ofSeq<_> x @@>
 
             Expr.PropertySet(this, property.ProvidedProperty, list)
 
