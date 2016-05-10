@@ -1,11 +1,11 @@
-version: '0.0.{build}'
+version: 0.0.{build}
 
 cache:
   - packages -> **\paket.lock
 
 build_script:
-  -cmd: build.cmd Default
-  
+  - cmd: build.cmd Default
+
 test:
   assemblies:
     - 'build/*.Tests.dll'
