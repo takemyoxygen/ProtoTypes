@@ -1,0 +1,7 @@
+version: '0.0.{build}'
+
+cache:
+  - packages -> **\paket.lock
+
+build_script:
+  -cmd: build.cmd Default
