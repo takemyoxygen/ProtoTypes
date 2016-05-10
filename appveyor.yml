@@ -4,7 +4,7 @@ cache:
   - packages -> **\paket.lock
 
 build_script:
-  - cmd: build.cmd Default
+  - cmd: build.cmd Build
 
 test:
   assemblies:
