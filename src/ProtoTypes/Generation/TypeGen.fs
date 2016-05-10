@@ -56,7 +56,7 @@ module internal TypeGen =
         
         { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
 
-    /// Creates Serialize: ZeroCopyBuffer -> ZeroCopyBuffer method that writes all fields to the given buffer
+
     let private createSerializeMethod properties =
         let serialize =
             ProvidedMethod(
@@ -69,7 +69,7 @@ module internal TypeGen =
                     let serializeProperties = 
                         properties
                         |> List.sortBy (fun prop -> prop.ProtoField.Position)
-                        |> List.map (fun prop -> Serialization.serialize prop buffer this)
+                        |> List.map (fun prop -> Serialization.serializeExpr prop buffer this)
                         |> Expr.sequence
                     Expr.Sequential(serializeProperties, buffer)))
 
@@ -77,7 +77,7 @@ module internal TypeGen =
 
         serialize
         
-    let createReadFromMethod properties targetType = 
+    let private createReadFromMethod properties targetType = 
         let readFrom = 
             ProvidedMethod(
                 "LoadFrom",
@@ -89,13 +89,14 @@ module internal TypeGen =
 
         readFrom
         
-    let createDeserializeMethod properties targetType =
+    let private createDeserializeMethod properties targetType =
         let deserializeMethod = 
             ProvidedMethod(
                 "Deserialize", 
                 [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)], 
                 targetType,
-                InvokeCode = (fun args -> Deserialization.deserializeExpr targetType args.[0]))
+                InvokeCode = 
+                    (fun args -> Expr.callStaticGeneric [targetType] [args.[0]] <@@ Codec.deserialize<Dummy> x @@>))
                 
         deserializeMethod.SetMethodAttrs(MethodAttributes.Static ||| MethodAttributes.Public)
         

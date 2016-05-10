@@ -5,6 +5,7 @@ open Froto.Core.Encoding
 
 open ProtoTypes.Core
 
+/// Contains helper functions to read/write values to/from ZeroCopyBuffer
 [<RequireQualifiedAccess>]
 module Codec =
 
