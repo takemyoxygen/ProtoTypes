@@ -8,12 +8,35 @@ open FsUnit
 
 open Froto.Core
 
-type Proto = ProtoTypes.ProtocolBuffersTypeProvider<"proto/person.proto">
+open ProtoTypes
+open ProtoTypes.Core
+
+type Proto = ProtocolBuffersTypeProvider<"proto/person.proto">
 type Sample = Proto.ProtoTypes.Sample
 
 let private createPerson() =
-    let address = Sample.Person.Address(Address1 = "Street", HouseNumber = 12, Whatever = [1; 2; 3], SomeInts = [Sample.Person.IntContainer(Value = 5); Sample.Person.IntContainer(Value = 7)])
-    Sample.Person(Name = "Name", Id = 1, HasCriminalConvictions = false, Weight = 82.3, PersonGender = Sample.Person.Gender.Female, Email = Some "Email", PersonAddress = Some address)
+    let address = 
+        Sample.Person.Address(
+            Address1 = "Street", 
+            HouseNumber = 12, 
+            Whatever = [1; 2; 3], 
+            SomeInts = [Sample.Person.IntContainer(Value = 5); Sample.Person.IntContainer(Value = 7)])
+
+    Sample.Person(
+        Name = "Name",
+         Id = 1,
+         HasCriminalConvictions = false,
+         Weight = 82.3, 
+         PersonGender = Sample.Person.Gender.Female, 
+         Email = Some "Email", 
+         PersonAddress = Some address)
+
+let serializeDeserialize<'T when 'T :> Message> (msg: 'T) (deserialize: ZeroCopyBuffer -> 'T) =
+    let buffer = ZeroCopyBuffer 1000
+    msg.Serialize buffer |> ignore
+    
+    let buffer' = ZeroCopyBuffer buffer.AsArraySegment
+    deserialize buffer'
 
 [<Test>]
 let ``Person test``() =
@@ -21,6 +44,7 @@ let ``Person test``() =
     person.Name |> should be (equal "Name")
     person.PersonGender |> should be (equal Sample.Person.Gender.Female)
     person.PersonAddress.Value.Address1 |> should be (equal "Street")
+    
     
 [<Test>]
 let ``Serialization test``() =
@@ -33,11 +57,7 @@ let ``Serialization test``() =
 [<Test>]
 let ``Deserialization test``() =
     let person = createPerson()
-    let buffer = ZeroCopyBuffer 1000
-    person.Serialize buffer |> ignore
-    
-    let buffer' = ZeroCopyBuffer buffer
-    let person' = Sample.Person.Deserialize buffer'
+    let person' = serializeDeserialize person Sample.Person.Deserialize
     
     person'.Name |> should be (equal person.Name)
     person'.Id |> should be (equal person.Id)
@@ -53,3 +73,26 @@ let ``Deserialization test``() =
     address'.HouseNumber |> should be (equal address.HouseNumber)
     address'.Whatever |> should be (equal address.Whatever)
     address'.SomeInts |> List.map (fun v -> v.Value) |> should be (equal (address.SomeInts |> List.map(fun v -> v.Value)))
+    
+    
+[<Test>]
+let ``Deserialize None optional value``() =
+    let person = createPerson()
+    person.PersonAddress <- None
+    let person' = serializeDeserialize person Sample.Person.Deserialize
+    
+    person'.PersonAddress.IsSome |> should be False
+    
+
+[<Test>]
+let ``Deserialize empty repeated value``() =
+    let person = createPerson()
+    let address = person.PersonAddress.Value
+    
+    address.SomeInts <- []
+    address.Whatever <- []
+
+    let address' = serializeDeserialize address Sample.Person.Address.Deserialize
+    
+    address'.SomeInts |> should be Empty
+    address'.Whatever |> should be Empty
