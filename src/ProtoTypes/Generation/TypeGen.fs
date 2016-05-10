@@ -65,7 +65,7 @@ module internal TypeGen =
                 typeof<ZeroCopyBuffer>,
                 InvokeCode = (fun args -> Serialization.serializeExpr properties args.[1] args.[0]))
 
-        serialize.SetMethodAttrs(MethodAttributes.Virtual)
+        serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public)
 
         serialize
         
