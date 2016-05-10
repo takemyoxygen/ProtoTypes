@@ -5,3 +5,7 @@ cache:
 
 build_script:
   -cmd: build.cmd Default
+  
+test:
+  assemblies:
+    - 'build/*.Tests.dll'
