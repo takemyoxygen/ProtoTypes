@@ -34,6 +34,11 @@ module Expr =
         if types |> List.exists isGenerated
         then ProvidedTypeBuilder.MakeGenericType(typeDef, types)
         else typeDef.MakeGenericType(types |> Array.ofList)
+        
+    let callStatic parameters staticMethod = Expr.Call(staticMethod, parameters)
+        
+    let callStaticGeneric types arguments =
+        getMethodDef >> makeGenericMethod types >> callStatic arguments
 
     let rec private typeHierarchy (ty: Type) = seq {
         if notNull ty
@@ -70,5 +75,3 @@ module Expr =
             enumeratorVar, 
             Expr.Call(sequence, sequence.Type.GetMethod("GetEnumerator"), []),
             Expr.Sequential(whileLoop, Expr.Call(enumeratorExpr, disposeMethod, [])))
-
-    let callStatic parameters staticMethod = Expr.Call(staticMethod, parameters)

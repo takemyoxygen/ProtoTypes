@@ -20,10 +20,7 @@ module Deserialization =
         | t when t = typeof<bool> -> <@@ Codec.readBool %%rawField  @@>
         | t when t = typeof<float> -> <@@ Codec.readDouble %%rawField  @@>
         | :? ProvidedTypeDefinition as ty-> 
-            <@@ Codec.readEmbedded<Dummy> x @@> 
-            |> Expr.getMethodDef 
-            |> Expr.makeGenericMethod [ty]
-            |> Expr.callStatic [rawField]
+            Expr.callStaticGeneric [ty] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
         | x -> notsupportedf "Deserialization of field %s of type %s is not supported yet" property.ProtoField.Name x.Name 
 
     let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =
@@ -44,28 +41,25 @@ module Deserialization =
             match property.ProtoField.Rule with
             | Repeated -> 
                 let list = Expr.Var(listVars.[property])
-                <@@ ResizeArray.add x x @@>
-                |> Expr.getMethodDef
-                |> Expr.makeGenericMethod [list.Type.GenericTypeArguments.[0]]
-                |> Expr.callStatic [Expr.Coerce(list, typeof<obj>); value]
+                Expr.callStaticGeneric 
+                    [list.Type.GenericTypeArguments.[0]]
+                    [Expr.Coerce(list, typeof<obj>); value]
+                    <@@ ResizeArray.add x x @@>
             | Optional ->
-                let someValue = 
-                    <@@ Option.some x @@> 
-                    |> Expr.getMethodDef 
-                    |> Expr.makeGenericMethod [value.Type]
-                    |> Expr.callStatic [value]
+                let someValue = Expr.callStaticGeneric [value.Type] [value] <@@ Option.some x @@> 
                 Expr.PropertySet(this, property.ProvidedProperty, someValue)
             | Required ->
                 Expr.PropertySet(this, property.ProvidedProperty, value)
 
         let setRepeated property (var: Var) =
             let itemTy = var.Type.GenericTypeArguments.[0]
-            let toListMethod =
-                <@@ ResizeArray.toList x @@>
-                |> Expr.getMethodDef
-                |> Expr.makeGenericMethod [itemTy]
 
-            let list = Expr.Call(toListMethod, [Expr.Coerce(Expr.Var(var), typeof<obj>)])
+            let list = 
+                Expr.callStaticGeneric 
+                    [itemTy] 
+                    [Expr.Coerce(Expr.Var(var), typeof<obj>)]
+                    <@@ ResizeArray.toList x @@> 
+
             Expr.PropertySet(this, property.ProvidedProperty, list)
 
         let fieldLoop = Expr.forLoop <@@ Codec.decodeFields %%buffer @@> (fun field ->
@@ -83,9 +77,7 @@ module Deserialization =
             |> Seq.map (fun pair -> setRepeated pair.Key pair.Value)
             |> List.ofSeq
 
-        let create ty =
-            let createMethod = <@@ create<_>() @@> |> Expr.getMethodDef |> Expr.makeGenericMethod [ty]
-            Expr.Call(createMethod, [])
+        let create ty = Expr.callStaticGeneric [ty] [] <@@ create<_>() @@>
 
         listVars.Values
         |> Seq.fold
@@ -98,7 +90,4 @@ module Deserialization =
            reraise()
 
     let deserializeExpr (ty: ProvidedTypeDefinition) buffer =
-        <@@ Codec.deserialize<Dummy> x @@>
-        |> Expr.getMethodDef
-        |> Expr.makeGenericMethod [ty]
-        |> Expr.callStatic [buffer]
+        Expr.callStaticGeneric [ty] [buffer] <@@ Codec.deserialize<Dummy> x @@>

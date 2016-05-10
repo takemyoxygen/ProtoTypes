@@ -34,11 +34,7 @@ module Serialization =
                 | Class -> <@@ Codec.writeEmbedded position %%buffer @@>
                 | Enum -> <@@ Codec.writeInt32 position %%buffer @@>
                 
-        let write f value = 
-            f
-            |> Expr.getMethodDef
-            |> Expr.makeGenericMethod [prop.UnderlyingType]
-            |> Expr.callStatic [writer; value]
+        let write f value = Expr.callStaticGeneric [prop.UnderlyingType] [writer; value] f
 
         try
             match prop.ProtoField.Rule with
