@@ -1,7 +1,8 @@
 version: 0.0.{build}
 
 cache:
-  - packages -> **\paket.lock
+  - packages -> paket.lock
+  - paket-files -> paket.lock
 
 build_script:
   - cmd: build.cmd Build
