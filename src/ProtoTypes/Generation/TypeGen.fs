@@ -63,15 +63,7 @@ module internal TypeGen =
                 "Serialize",
                 [ ProvidedParameter("buffer", typeof<ZeroCopyBuffer>) ],
                 typeof<ZeroCopyBuffer>,
-                InvokeCode = (fun args ->
-                    let this = args.[0]
-                    let buffer = args.[1]
-                    let serializeProperties = 
-                        properties
-                        |> List.sortBy (fun prop -> prop.ProtoField.Position)
-                        |> List.map (fun prop -> Serialization.serializeExpr prop buffer this)
-                        |> Expr.sequence
-                    Expr.Sequential(serializeProperties, buffer)))
+                InvokeCode = (fun args -> Serialization.serializeExpr properties args.[1] args.[0]))
 
         serialize.SetMethodAttrs(MethodAttributes.Virtual)
 

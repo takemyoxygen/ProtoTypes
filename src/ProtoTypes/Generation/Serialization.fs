@@ -14,7 +14,8 @@ open Froto.Core.Encoding
 module Serialization = 
         
     /// Creates an expression that serializes all given properties to the given instance of ZeroCopyBuffer
-    let serializeExpr (prop: ProtoPropertyInfo) buffer this =
+    let private serializeProperty (prop: ProtoPropertyInfo) buffer this =
+    
         let value = Expr.PropertyGet(this, prop.ProvidedProperty)
         let position = prop.ProtoField.Position
         
@@ -50,3 +51,12 @@ module Serialization =
         | ex -> 
             printfn "Failed to serialize property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex
             reraise()
+            
+    let serializeExpr properties buffer this =
+        let serializeProperties = 
+            properties
+            |> List.sortBy (fun prop -> prop.ProtoField.Position)
+            |> List.map (fun prop -> serializeProperty prop buffer this)
+            |> Expr.sequence 
+
+        Expr.Sequential(serializeProperties, buffer)
