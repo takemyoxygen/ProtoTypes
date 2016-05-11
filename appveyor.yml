@@ -5,8 +5,6 @@ cache:
   - paket-files -> paket.lock
 
 build_script:
-  - cmd: build.cmd Build
+  - cmd: build.cmd Test
 
-test:
-  assemblies:
-    - 'build/*.Tests.dll'
+test: off
