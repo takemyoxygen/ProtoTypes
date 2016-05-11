@@ -3,7 +3,9 @@ F# type provider for Google Protocol Buffers
 
 ## Build status:
 
-Windows: [![Build status](https://ci.appveyor.com/api/projects/status/tn17l78rxk0dokmh?svg=true)](https://ci.appveyor.com/project/takemyoxygen/prototypes)
+| Windows | Linux |
+|:---:|:---:|
+| [![Build status](https://ci.appveyor.com/api/projects/status/tn17l78rxk0dokmh?svg=true)](https://ci.appveyor.com/project/takemyoxygen/prototypes) | [![Build status](https://travis-ci.org/takemyoxygen/ProtoTypes.svg?branch=master)](https://travis-ci.org/takemyoxygen/ProtoTypes) |
 
 ## Some links:
 
