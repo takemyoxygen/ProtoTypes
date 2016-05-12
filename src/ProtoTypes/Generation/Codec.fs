@@ -19,7 +19,7 @@ type proto_sint64 = int64
 type proto_fixed32 = uint32
 type proto_fixed64 = uint64
 type proto_sfixed32 = int
-type proto_sfixed64 = uint64
+type proto_sfixed64 = int64
 type proto_bool = bool
 type proto_string = string
 type proto_bytes = ArraySegment<byte>
@@ -35,7 +35,7 @@ module Codec =
         f fieldNumber value buffer |> ignore 
 
     let writeDouble: Writer<proto_double> = write Serializer.dehydrateDouble
-    let writeFloat: Writer<proto_float> = fun _ -> notsupportedf "float32 is currently not supported"
+    let writeFloat: Writer<proto_float> = write Serializer.dehydrateSingle
     let writeInt32: Writer<proto_int32> = write Serializer.dehydrateVarint
     let writeInt64: Writer<proto_int64> = write Serializer.dehydrateVarint
     let writeUInt32: Writer<proto_uint32> = write Serializer.dehydrateVarint
@@ -43,10 +43,16 @@ module Codec =
     let writeSInt32: Writer<proto_sint32> = write Serializer.dehydrateSInt32
     let writeSInt64: Writer<proto_sint64> = write Serializer.dehydrateSInt64
     // TODO Maybe should be fixed in Froto?
-    let writeFixed32: Writer<proto_fixed32> = fun f -> fun b -> fun v -> Serializer.dehydrateFixed32 f (int v) b |> ignore
-    let writeFixed64: Writer<proto_fixed64> = fun f -> fun b -> fun v -> Serializer.dehydrateFixed64 f (int v) b |> ignore
+    let writeFixed32: Writer<proto_fixed32> = fun fieldNumber buffer value -> 
+        Serializer.dehydrateDefaultedFixed32 0u fieldNumber value buffer |> ignore
+        
+    let writeFixed64: Writer<proto_fixed64> = fun fieldNumber buffer value -> 
+        Serializer.dehydrateDefaultedFixed64 0UL fieldNumber value buffer |> ignore
+
     let writeSFixed32: Writer<proto_sfixed32> = write Serializer.dehydrateFixed32
-    let writeSFixed64: Writer<proto_sfixed64> = fun _ -> notsupportedf "sfixed64 is currently not supported"
+    let writeSFixed64: Writer<proto_sfixed64> = fun fieldNumber buffer value ->
+        Serializer.dehydrateDefaultedFixed64 0L fieldNumber value buffer |> ignore
+        
     let writeBool: Writer<proto_bool> = write Serializer.dehydrateBool
     let writeString: Writer<proto_string> = write Serializer.dehydrateString
     let writeBytes: Writer<proto_bytes> = write Serializer.dehydrateBytes
@@ -94,7 +100,7 @@ module Codec =
         x
 
     let readDouble: Reader<proto_double> = readField Serializer.hydrateDouble
-    let readFloat: Reader<proto_float> = fun _ -> notsupportedf "float32 is currently not supported"
+    let readFloat: Reader<proto_float> = readField Serializer.hydrateSingle
     let readInt32: Reader<proto_int32> = readField Serializer.hydrateInt32
     let readInt64: Reader<proto_int64> = readField Serializer.hydrateInt64
     let readUInt32: Reader<proto_uint32> = readField Serializer.hydrateUInt32
@@ -104,7 +110,7 @@ module Codec =
     let readFixed32: Reader<proto_fixed32> = readField Serializer.hydrateFixed32
     let readFixed64: Reader<proto_fixed64> = readField Serializer.hydrateFixed64
     let readSFixed32: Reader<proto_sfixed32> = readField Serializer.hydrateSFixed32
-    let readSFixed64: Reader<proto_sfixed64> = readField Serializer.hydrateSFixed64 >> uint64
+    let readSFixed64: Reader<proto_sfixed64> = readField Serializer.hydrateSFixed64
     let readBool: Reader<proto_bool> = readField Serializer.hydrateBool
     let readString: Reader<proto_string> = readField Serializer.hydrateString
     let readBytes: Reader<proto_bytes> = readField Serializer.hydrateBytes >> proto_bytes

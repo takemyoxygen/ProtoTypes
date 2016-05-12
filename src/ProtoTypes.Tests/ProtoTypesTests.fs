@@ -10,6 +10,7 @@ open Froto.Core
 
 open ProtoTypes
 open ProtoTypes.Core
+open ProtoTypes.Generation
 
 type Proto = ProtocolBuffersTypeProvider<"proto/person.proto">
 type Sample = Proto.ProtoTypes.Sample
@@ -108,9 +109,10 @@ let ``Primitive types``() =
             Uint64Field = 1146111UL,
             Sint32Field = 1112,
             Sint64Field = -1236134L,
-            Fixed32Field = 555ul,
-            Fixed64Field = 12521351UL,
-            Sfixed32Field = -1296,
+            Fixed32Field = proto_fixed32.MaxValue,
+            Fixed64Field = proto_fixed64.MaxValue,
+            Sfixed32Field = proto_sfixed32.MinValue,
+            Sfixed64Field = proto_sfixed64.MinValue,
             BoolField = true,
             StringField = "string field value",
             BytesField = ArraySegment [| 1uy; 2uy; 42uy |])
@@ -132,6 +134,7 @@ let ``Primitive types``() =
     container'.Fixed64Field |> should be (equal container.Fixed64Field)
     
     container'.Sfixed32Field |> should be (equal container.Sfixed32Field)
+    container'.Sfixed64Field |> should be (equal container.Sfixed64Field)
     
     container'.BoolField |> should be (equal container.BoolField)
     container'.StringField |> should be (equal container.StringField)
