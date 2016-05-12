@@ -14,16 +14,30 @@ open Froto.Core.Encoding
 [<RequireQualifiedAccess>]
 module Deserialization =
 
+    let private primitiveReader rawField = function
+        | "double" -> <@@ Codec.readDouble %%rawField @@>
+        | "float" -> <@@ Codec.readFloat %%rawField @@>
+        | "int32" -> <@@ Codec.readInt32 %%rawField @@>
+        | "int64" -> <@@ Codec.readInt64 %%rawField @@>
+        | "uint32" -> <@@ Codec.readUInt32 %%rawField @@>
+        | "uint64" -> <@@ Codec.readUInt64 %%rawField @@>
+        | "sint32" -> <@@ Codec.readSInt32 %%rawField @@>
+        | "sint64" -> <@@ Codec.readSInt64 %%rawField @@>
+        | "fixed32" -> <@@ Codec.readFixed32 %%rawField @@>
+        | "fixed64" -> <@@ Codec.readFixed64 %%rawField @@>
+        | "sfixed32" -> <@@ Codec.readSFixed32 %%rawField @@>
+        | "sfixed64" -> <@@ Codec.readSFixed64 %%rawField @@>
+        | "bool" -> <@@ Codec.readBool %%rawField @@>
+        | "string" -> <@@ Codec.readString %%rawField @@>
+        | "bytes" -> <@@ Codec.readBytes %%rawField @@>
+        | x -> notsupportedf "Primitive type '%s' is not supported" x
+
     /// Creates quotation that converts RawField quotation to target property type
     let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
-        match property.UnderlyingType with
-        | t when t = typeof<int> -> <@@ Codec.readInt32 %%rawField @@>
-        | t when t = typeof<string> -> <@@ Codec.readString %%rawField  @@>
-        | t when t = typeof<bool> -> <@@ Codec.readBool %%rawField  @@>
-        | t when t = typeof<float> -> <@@ Codec.readDouble %%rawField  @@>
-        | :? ProvidedTypeDefinition as ty-> 
-            Expr.callStaticGeneric [ty] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
-        | x -> notsupportedf "Deserialization of field %s of type %s is not supported yet" property.ProtoField.Name x.Name 
+        match property.TypeKind with
+        | Primitive -> primitiveReader rawField property.ProtoField.Type
+        | Enum -> <@@ Codec.readInt32 %%rawField @@>
+        | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
     let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =
     

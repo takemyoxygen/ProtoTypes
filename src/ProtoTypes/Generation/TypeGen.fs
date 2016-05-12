@@ -18,14 +18,20 @@ open Froto.Core.Encoding
 module internal TypeGen =
 
     let private asScalarType = function
-        | "double" -> Some typeof<double>
-        | "float" -> Some typeof<float32>
-        | "int32" | "sint32" | "fixed32" | "sfixed32" -> Some typeof<int>
-        | "int64" | "sint64" | "fixed64" | "sfixed64" -> Some typeof<int64>
-        | "uint32" -> Some typeof<uint32>
-        | "uint64" -> Some typeof<uint64>
-        | "string" -> Some typeof<string>
+        | "double" -> Some typeof<proto_double>
+        | "float" -> Some typeof<proto_float>
+        | "int32" -> Some typeof<proto_int32>
+        | "int64" -> Some typeof<proto_int64>
+        | "uint32" -> Some typeof<proto_uint32>
+        | "uint64" -> Some typeof<proto_uint64>
+        | "sint32" -> Some typeof<proto_sint32>
+        | "sint64" -> Some typeof<proto_sint64>
+        | "fixed32" -> Some typeof<proto_fixed32>
+        | "fixed64" -> Some typeof<proto_fixed64>
+        | "sfixed32" -> Some typeof<proto_sfixed32>
+        | "sfixed64" -> Some typeof<proto_sfixed64>
         | "bool" -> Some typeof<bool>
+        | "string" -> Some typeof<string>
         | "bytes" -> Some typeof<byte[]>
         | x -> None
     
