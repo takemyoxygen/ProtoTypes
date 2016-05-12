@@ -1,25 +1,38 @@
 namespace ProtoTypes.Generation
 
+open System
+
 open Froto.Core
 open Froto.Core.Encoding
 
 open ProtoTypes.Core
 
+type Writer<'T> = int -> ZeroCopyBuffer -> 'T -> unit
+type Reader<'T> = RawField -> 'T
+
 /// Contains helper functions to read/write values to/from ZeroCopyBuffer
 [<RequireQualifiedAccess>]
 module Codec =
 
-    let writeInt32 fieldNumber buffer (value: int) =
-        Serializer.dehydrateVarint fieldNumber value buffer |> ignore
-        
-    let writeString fieldNumber buffer value =
-        Serializer.dehydrateString fieldNumber value buffer |> ignore
-        
-    let writeBool fieldNumber buffer value =
-        Serializer.dehydrateBool fieldNumber value buffer |> ignore
-        
-    let writeDouble fieldNumber buffer value =
-        Serializer.dehydrateDouble fieldNumber value buffer |> ignore
+    let write f (fieldNumber: int) (buffer: ZeroCopyBuffer) value =
+        f fieldNumber value buffer |> ignore 
+
+    let writeInt32: Writer<int> = write Serializer.dehydrateVarint
+    let writeString: Writer<string> = write Serializer.dehydrateString
+    let writeBool: Writer<bool> = write Serializer.dehydrateBool
+    let writeDouble: Writer<float> = write Serializer.dehydrateDouble
+    let writeFloat32: Writer<float32> = fun _ -> notsupportedf "float32 is currently not supported"
+    let writeInt64: Writer<int64> = write Serializer.dehydrateVarint
+    let writeUInt32: Writer<uint32> = write Serializer.dehydrateVarint
+    let writeUInt64: Writer<uint64> = write Serializer.dehydrateVarint
+    let writeSInt32: Writer<int> = write Serializer.dehydrateSInt32
+    let writeSInt64: Writer<int64> = write Serializer.dehydrateSInt64
+    let writeFixed32: Writer<int> = write Serializer.dehydrateFixed32
+    // TODO Serializer.dehydrateFixed64 should accept int64. Should be fixed in Froto
+    let writeFixed64: Writer<int64> = fun f -> fun b -> fun v -> Serializer.dehydrateFixed64 f (int v) b |> ignore
+    let writeSFixed32: Writer<int> = fun _ -> notsupportedf "sfixed32 is currently not supported"
+    let writeSFixed64: Writer<int64> = fun _ -> notsupportedf "sfixed64 is currently not supported"
+    let writeBytes: Writer<ArraySegment<byte>> = write Serializer.dehydrateBytes
         
     /// Serializes optional field using provided function to handle inner value if present
     let writeOptional writeInner value =
@@ -63,13 +76,21 @@ module Codec =
         x.ReadFrom buffer |> ignore
         x
 
-    let readString = readField Serializer.hydrateString
-    
-    let readInt = readField Serializer.hydrateInt32
-    
-    let readBool = readField Serializer.hydrateBool
-    
-    let readDouble = readField Serializer.hydrateDouble
+    let readDouble: Reader<float> = readField Serializer.hydrateDouble
+    let readFloat: Reader<float32> = fun _ -> notsupportedf "float32 is currently not supported"
+    let readInt32: Reader<int> = readField Serializer.hydrateInt32
+    let readInt64: Reader<int64> = readField Serializer.hydrateInt64
+    let readUInt32: Reader<uint32> = readField Serializer.hydrateUInt32
+    let readUInt64: Reader<uint64> = readField Serializer.hydrateUInt64
+    let readSInt32: Reader<int> = readField Serializer.hydrateSInt32
+    let readSInt64: Reader<int64> = readField Serializer.hydrateSInt64
+    let readFixed32: Reader<uint32> = readField Serializer.hydrateFixed32
+    let readFixed64: Reader<uint64> = readField Serializer.hydrateFixed64
+    let readSFixed32: Reader<int> = readField Serializer.hydrateSFixed32
+    let readSFixed64: Reader<int64> = readField Serializer.hydrateSFixed64
+    let readBool: Reader<bool> = readField Serializer.hydrateBool
+    let readString: Reader<string> = readField Serializer.hydrateString
+    let readBytes: Reader<byte[]> = readField Serializer.hydrateBytes 
     
     let readEmbedded<'T when 'T :> Message and 'T : (new: unit -> 'T)> field = 
         match field with

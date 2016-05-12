@@ -17,7 +17,7 @@ module Deserialization =
     /// Creates quotation that converts RawField quotation to target property type
     let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         match property.UnderlyingType with
-        | t when t = typeof<int> -> <@@ Codec.readInt %%rawField @@>
+        | t when t = typeof<int> -> <@@ Codec.readInt32 %%rawField @@>
         | t when t = typeof<string> -> <@@ Codec.readString %%rawField  @@>
         | t when t = typeof<bool> -> <@@ Codec.readBool %%rawField  @@>
         | t when t = typeof<float> -> <@@ Codec.readDouble %%rawField  @@>
