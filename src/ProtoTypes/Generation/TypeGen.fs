@@ -30,9 +30,9 @@ module internal TypeGen =
         | "fixed64" -> Some typeof<proto_fixed64>
         | "sfixed32" -> Some typeof<proto_sfixed32>
         | "sfixed64" -> Some typeof<proto_sfixed64>
-        | "bool" -> Some typeof<bool>
-        | "string" -> Some typeof<string>
-        | "bytes" -> Some typeof<byte[]>
+        | "bool" -> Some typeof<proto_bool>
+        | "string" -> Some typeof<proto_string>
+        | "bytes" -> Some typeof<proto_bytes>
         | x -> None
     
     let private applyRule rule (fieldType: Type) = 

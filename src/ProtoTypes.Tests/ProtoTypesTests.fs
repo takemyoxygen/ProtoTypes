@@ -96,3 +96,43 @@ let ``Deserialize empty repeated value``() =
     
     address'.SomeInts |> should be Empty
     address'.Whatever |> should be Empty
+
+[<Test>]
+let ``Primitive types``() = 
+    let container = 
+        Sample.PrimitiveContainer(
+            DoubleField = 1.2,
+            Int32Field = 42,
+            Int64Field = 12351L,
+            Uint32Field = 123124ul,
+            Uint64Field = 1146111UL,
+            Sint32Field = 1112,
+            Sint64Field = -1236134L,
+            Fixed32Field = 555ul,
+            Fixed64Field = 12521351UL,
+            Sfixed32Field = -1296,
+            BoolField = true,
+            StringField = "string field value",
+            BytesField = ArraySegment [| 1uy; 2uy; 42uy |])
+    
+    let container' = serializeDeserialize container Sample.PrimitiveContainer.Deserialize
+    
+    container'.DoubleField |> should be (equal container.DoubleField)
+    
+    container'.Int32Field |> should be (equal container.Int32Field)
+    container'.Int64Field |> should be (equal container.Int64Field)
+    
+    container'.Uint32Field |> should be (equal container.Uint32Field)
+    container'.Uint64Field |> should be (equal container.Uint64Field)
+    
+    container'.Sint32Field |> should be (equal container.Sint32Field)
+    container'.Sint64Field |> should be (equal container.Sint64Field)
+    
+    container'.Fixed32Field |> should be (equal container.Fixed32Field)
+    container'.Fixed64Field |> should be (equal container.Fixed64Field)
+    
+    container'.Sfixed32Field |> should be (equal container.Sfixed32Field)
+    
+    container'.BoolField |> should be (equal container.BoolField)
+    container'.StringField |> should be (equal container.StringField)
+    container'.BytesField |> should be (equal container.BytesField)
