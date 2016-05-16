@@ -86,8 +86,8 @@
     <Compile Include="Core/ResizeArray.fs" />
     <Compile Include="Generation/Codec.fs" />
     <Compile Include="Generation/ProtoPropertyInfo.fs" />
-    <Compile Include="Generation/TypesRegistry.fs" />
     <Compile Include="Generation/Provided.fs" />
+    <Compile Include="Generation/TypesRegistry.fs" />
     <Compile Include="Generation/Serialization.fs" />
     <Compile Include="Generation/Deserialization.fs" />
     <Compile Include="Generation/TypeGen.fs" />

@@ -36,7 +36,7 @@ module Deserialization =
     let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         match property.TypeKind with
         | Primitive -> primitiveReader rawField property.ProtoField.Type
-        | Enum -> <@@ Codec.readInt32 %%rawField @@>
+        | Enum -> Expr.Coerce(<@@ Codec.readInt32 %%rawField @@>, property.UnderlyingType)
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
     let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =

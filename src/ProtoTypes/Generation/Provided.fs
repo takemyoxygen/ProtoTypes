@@ -1,5 +1,6 @@
 namespace ProtoTypes.Generation
 
+open System
 open System.Reflection
 open FSharp.Quotations
 
@@ -9,8 +10,15 @@ open ProviderImplementation.ProvidedTypes
 [<RequireQualifiedAccess>]
 module internal Provided =
     
+    let message name = ProvidedTypeDefinition(name, Some typeof<Message>, IsErased = false)
+    
+    let enum name = 
+        let enumTy = ProvidedTypeDefinition(name, Some typeof<Enum>, IsErased = false)
+        enumTy.SetEnumUnderlyingType typeof<int>
+        enumTy
+    
     let addEnumValues (enum: ProvidedTypeDefinition) =
-        Seq.map(fun (name, value) ->  ProvidedLiteralField(name, typeof<int>, value))
+        Seq.map(fun (name, value) ->  ProvidedLiteralField(name, enum, value))
         >> Seq.iter enum.AddMember
 
     let readWriteProperty propertyType name = 

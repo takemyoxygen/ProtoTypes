@@ -45,8 +45,7 @@ module internal TypeGen =
 
         let findInLookup() =
             match TypesRegistry.resolve scope field.Type lookup with
-            | Some(Enum, t) -> Some(TypeKind.Enum, typeof<int>)
-            | Some(Class, t) -> Some(Class, t :> Type)
+            | Some(Enum as k, t) | Some(Class as k, t) -> Some(k, t :> Type)
             | _ -> None
 
         let typeKind, propertyType = 

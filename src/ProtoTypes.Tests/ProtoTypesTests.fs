@@ -22,6 +22,8 @@ let private createPerson() =
             HouseNumber = 12, 
             Whatever = [1; 2; 3], 
             SomeInts = [Sample.Person.IntContainer(Value = 5); Sample.Person.IntContainer(Value = 7)])
+            
+    printfn "Foo: %O" Sample.Person.Gender.Female
 
     Sample.Person(
         Name = "Name",

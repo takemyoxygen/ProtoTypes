@@ -29,9 +29,14 @@ module internal TypesRegistry =
         
         messages
         |> Seq.collect (loop scope)
-        |> Seq.map (fun (tp, fullName) -> 
-            let baseType = match tp with | Class -> typeof<Message> | _ -> typeof<obj>
-            fullName, (tp, ProvidedTypeDefinition(getShortName fullName, Some baseType, IsErased = false)))
+        |> Seq.map (fun (kind, fullName) ->
+            let name = getShortName fullName
+            let ty =  
+                match kind with
+                | Class -> Provided.message name
+                | Enum -> Provided.enum name
+                | x -> invalidOp <| sprintf "Type represending %O should not be discovered" x
+            fullName, (kind, ty))
         |> Map.ofSeq
         
     let resolve scope targetType (lookup: TypesLookup) = 
