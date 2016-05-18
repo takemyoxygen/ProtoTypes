@@ -46,7 +46,6 @@ module Deserialization =
         // 3. Iterate over fields read: if FieldNum matches field position - 
         //    set corresponding property or add value to the ResizeArray (for repeated fields)
         // 4. Convert ResizeArray to lists and set repeated fields
-        // 5. Return buffer
     
         try
         
@@ -114,7 +113,7 @@ module Deserialization =
 
         let create ty = Expr.callStaticGeneric [ty] [] <@@ create<_>() @@>
         
-        let body = fieldLoop :: setRepeatedFields @ [buffer] |> Expr.sequence
+        let body = fieldLoop :: setRepeatedFields |> Expr.sequence
 
         resizeArrays.Values
         |> Seq.fold (fun acc var -> Expr.Let(var, create var.Type, acc)) body

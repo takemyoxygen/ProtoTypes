@@ -80,7 +80,7 @@ module internal TypeGen =
             ProvidedMethod(
                 "LoadFrom",
                 [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)],
-                typeof<ZeroCopyBuffer>,
+                typeof<System.Void>,
                 InvokeCode = (fun args -> Deserialization.readFrom targetType properties args.[0] args.[1]))
 
         readFrom.SetMethodAttrs(MethodAttributes.Virtual)

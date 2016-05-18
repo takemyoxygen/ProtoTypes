@@ -82,7 +82,6 @@ module Codec =
         |> WireFormat.encodeTag fieldNumber WireType.LengthDelimited
         |> WireFormat.encodeVarint (uint64 message.SerializedLength)
         |> message.Serialize
-        |> ignore 
 
     let decodeFields (zcb: ZeroCopyBuffer) = seq {
         while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do
@@ -96,7 +95,7 @@ module Codec =
 
     let deserialize<'T when 'T :> Message and 'T : (new: unit -> 'T)> buffer =
         let x = new 'T()
-        x.ReadFrom buffer |> ignore
+        x.ReadFrom buffer
         x
 
     let readDouble: Reader<proto_double> = readField Serializer.hydrateDouble

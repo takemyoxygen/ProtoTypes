@@ -65,10 +65,7 @@ module Serialization =
             reraise()
             
     let serializeExpr properties buffer this =
-        let serializeProperties = 
-            properties
-            |> List.sortBy (fun prop -> prop.ProtoField.Position)
-            |> List.map (fun prop -> serializeProperty prop buffer this)
-            |> Expr.sequence 
-
-        Expr.Sequential(serializeProperties, buffer)
+        properties
+        |> List.sortBy (fun prop -> prop.ProtoField.Position)
+        |> List.map (fun prop -> serializeProperty prop buffer this)
+        |> Expr.sequence 
