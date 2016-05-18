@@ -11,29 +11,12 @@ open ProtoTypes.Core
 open ProviderImplementation.ProvidedTypes
 
 open Froto.Parser.Model
+open Froto.Parser.Ast
 open Froto.Core
 open Froto.Core.Encoding
 
 [<RequireQualifiedAccess>]
 module internal TypeGen =
-
-    let private asScalarType = function
-        | "double" -> Some typeof<proto_double>
-        | "float" -> Some typeof<proto_float>
-        | "int32" -> Some typeof<proto_int32>
-        | "int64" -> Some typeof<proto_int64>
-        | "uint32" -> Some typeof<proto_uint32>
-        | "uint64" -> Some typeof<proto_uint64>
-        | "sint32" -> Some typeof<proto_sint32>
-        | "sint64" -> Some typeof<proto_sint64>
-        | "fixed32" -> Some typeof<proto_fixed32>
-        | "fixed64" -> Some typeof<proto_fixed64>
-        | "sfixed32" -> Some typeof<proto_sfixed32>
-        | "sfixed64" -> Some typeof<proto_sfixed64>
-        | "bool" -> Some typeof<proto_bool>
-        | "string" -> Some typeof<proto_string>
-        | "bytes" -> Some typeof<proto_bytes>
-        | x -> None
     
     let private applyRule rule (fieldType: Type) = 
         match rule with
@@ -43,21 +26,14 @@ module internal TypeGen =
 
     let private createProperty scope (lookup: TypesLookup) (field: ProtoField) =
 
-        let findInLookup() =
-            match TypesRegistry.resolve scope field.Type lookup with
-            | Some(Enum, t) -> Some(TypeKind.Enum, typeof<int>)
-            | Some(Class, t) -> Some(Class, t :> Type)
-            | _ -> None
-
         let typeKind, propertyType = 
-            asScalarType field.Type 
-            |> Option.map (fun t -> Primitive, t)
-            |> Option.otherwise findInLookup
-            |> Option.map (fun (kind, t) -> kind, applyRule field.Rule t)
-            |> Option.require (sprintf "Type '%s' is not supported" field.Type)
-            
-        let propertyName = Naming.snakeToPascal field.Name
+            match TypeResolver.resolve scope field.Type lookup with
+            | Some(Enum, t) -> TypeKind.Enum, typeof<int>
+            | Some(kind, t) -> kind, t
+            | None -> invalidOp <| sprintf "Unable to resolve type '%s'" field.Type
         
+        let propertyType = applyRule field.Rule propertyType
+        let propertyName = Naming.snakeToPascal field.Name
         let property, backingField = Provided.readWriteProperty propertyType propertyName
         
         { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
@@ -102,7 +78,7 @@ module internal TypeGen =
     
     let private createEnum scope lookup (enum: ProtoEnum) =
         let _, providedEnum = 
-            TypesRegistry.resolve scope enum.Name lookup
+            TypeResolver.resolveNonScalar scope enum.Name lookup
             |> Option.require (sprintf "Enum '%s' is not defined" enum.Name)
         
         enum.Items
@@ -113,7 +89,7 @@ module internal TypeGen =
 
     let rec createType scope (lookup: TypesLookup) (message: ProtoMessage) = 
         let _, providedType = 
-            TypesRegistry.resolve scope message.Name lookup 
+            TypeResolver.resolveNonScalar scope message.Name lookup 
             |> Option.require (sprintf "Type '%s' is not defined" message.Name)
         
         let nestedScope = scope +.+ message.Name
@@ -125,6 +101,11 @@ module internal TypeGen =
         properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
         providedType.AddMember <| Provided.ctor()
         
+        message.Parts 
+        |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
+        |> Seq.collect (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
+        |> Seq.iter providedType.AddMember
+    
         let serializeMethod = createSerializeMethod properties
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))

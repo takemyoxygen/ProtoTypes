@@ -8,6 +8,10 @@ open ProviderImplementation.ProvidedTypes
 
 [<RequireQualifiedAccess>]
 module internal Provided =
+
+    let message name = ProvidedTypeDefinition(name, Some typeof<Message>, IsErased = false)
+
+    let enum name = ProvidedTypeDefinition(name, Some typeof<obj>, IsErased = false)
     
     let addEnumValues (enum: ProvidedTypeDefinition) =
         Seq.map(fun (name, value) ->  ProvidedLiteralField(name, typeof<int>, value))
