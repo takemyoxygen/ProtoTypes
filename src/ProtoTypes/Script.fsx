@@ -28,5 +28,5 @@ p2.Weight
 
 
 let oneof = Sample.OneOfContainer()
-oneof.Text <- Some "Text"
-oneof
+oneof.Identifier <- Some 10
+Sample.OneOfContainer.ValueOneofCase.Identifier

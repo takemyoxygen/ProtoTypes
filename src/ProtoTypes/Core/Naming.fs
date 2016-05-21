@@ -21,6 +21,9 @@ module internal Naming =
     /// Converts "NameLikeThat" to "nameLikeThat"
     let pascalToCamel = withFirstChar Char.ToLower
     
+    /// Converts "nameLikeThat" to "NameLikeThat" 
+    let camelToPascal = withFirstChar Char.ToUpper
+    
     /// Converts "name_like_that" to "nameLikeThat"
     let snakeToCamel = snakeToPascal >> pascalToCamel
     
