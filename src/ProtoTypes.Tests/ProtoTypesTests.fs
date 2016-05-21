@@ -139,3 +139,25 @@ let ``Primitive types``() =
     container'.BoolField |> should be (equal container.BoolField)
     container'.StringField |> should be (equal container.StringField)
     container'.BytesField |> should be (equal container.BytesField)
+    
+type ValueOneofCase = Sample.OneOfContainer.ValueOneofCase
+
+[<Test>]
+let ``Oneof properties test``() =
+    let oneofContainer = Sample.OneOfContainer()
+    oneofContainer.ValueCase |> should be (equal ValueOneofCase.None)
+    
+    oneofContainer.Text <- Some "text"
+    oneofContainer.Text |> should be (equal <| Some "text")
+    oneofContainer.ValueCase |> should be (equal ValueOneofCase.Text)
+    oneofContainer.Identifier.IsSome |> should be False
+    
+    oneofContainer.Identifier <- Some 10
+    oneofContainer.Identifier |> should be (equal <| Some 10)
+    oneofContainer.Text.IsSome |> should be False
+    oneofContainer.ValueCase |> should be (equal ValueOneofCase.Identifier)
+    
+    oneofContainer.Identifier <- None
+    oneofContainer.Identifier.IsSome |> should be False
+    oneofContainer.Text.IsSome |> should be False
+    oneofContainer.ValueCase |> should be (equal ValueOneofCase.None)
