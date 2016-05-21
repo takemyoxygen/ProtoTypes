@@ -161,3 +161,9 @@ let ``Oneof properties test``() =
     oneofContainer.Identifier.IsSome |> should be False
     oneofContainer.Text.IsSome |> should be False
     oneofContainer.ValueCase |> should be (equal ValueOneofCase.None)
+    
+    oneofContainer.Identifier <- Some 10
+    oneofContainer.ClearValue()
+    oneofContainer.ValueCase |> should be (equal ValueOneofCase.None)
+    oneofContainer.Identifier.IsSome |> should be False
+    oneofContainer.Text.IsSome |> should be False

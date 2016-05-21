@@ -1,5 +1,6 @@
 namespace ProtoTypes.Generation
 
+open System
 open System.Reflection
 open FSharp.Quotations
 
@@ -27,31 +28,45 @@ module OneOf =
         caseProperty.GetterCode <- fun args -> Expr.FieldGet(args.[0], caseField)
 
         let valueField = ProvidedField(Naming.snakeToCamel name, typeof<obj>)
-        numberedMembers
-        |> List.map (fun (i, TOneOfField(name, ptype, _, _)) -> 
-            let _, propertyType =
-                TypeResolver.resolvePType scope ptype typesLookup
-                |> Option.map (fun (kind, ty) -> kind, Expr.makeGenericType [ty] typedefof<option<_>>)
-                |> Option.require (sprintf "Unable to find type %A" ptype) 
-                
-            let property = ProvidedProperty(Naming.snakeToPascal name, propertyType)
-            
-            property.GetterCode <- fun args -> 
-                Expr.IfThenElse(
-                    Expr.equal (Expr.FieldGet(args.[0], caseField)) (Expr.Value(i)),
-                    Expr.Coerce(Expr.FieldGet(args.[0], valueField), propertyType),
-                    Expr.defaultOf propertyType)
-
-            property.SetterCode <- fun args -> 
-                let value = args.[1]
-                let case = 
-                    Expr.IfThenElse(
-                        Expr.equal (Expr.Coerce(value, typeof<obj>)) (Expr.Value(null)),
-                        Expr.Value(0),
-                        Expr.Value(i))
-                Expr.Sequential(
-                    Expr.FieldSet(args.[0], valueField, Expr.Coerce(value, typeof<obj>)),
-                    Expr.FieldSet(args.[0], caseField, case))
+        let properties = 
+            numberedMembers
+            |> List.map (fun (i, TOneOfField(name, ptype, _, _)) -> 
+                let _, propertyType =
+                    TypeResolver.resolvePType scope ptype typesLookup
+                    |> Option.map (fun (kind, ty) -> kind, Expr.makeGenericType [ty] typedefof<option<_>>)
+                    |> Option.require (sprintf "Unable to find type %A" ptype) 
                     
-            property :> MemberInfo)
-        |> List.append [valueField :> MemberInfo; oneofCaseEnum :> MemberInfo; caseField :> MemberInfo; caseProperty :> MemberInfo]
+                let property = ProvidedProperty(Naming.snakeToPascal name, propertyType)
+                
+                property.GetterCode <- fun args -> 
+                    Expr.IfThenElse(
+                        Expr.equal (Expr.FieldGet(args.[0], caseField)) (Expr.Value(i)),
+                        Expr.Coerce(Expr.FieldGet(args.[0], valueField), propertyType),
+                        Expr.defaultOf propertyType)
+
+                property.SetterCode <- fun args -> 
+                    let value = args.[1]
+                    let case = 
+                        Expr.IfThenElse(
+                            Expr.equal (Expr.Coerce(value, typeof<obj>)) (Expr.Value(null)),
+                            Expr.Value(0),
+                            Expr.Value(i))
+                    Expr.Sequential(
+                        Expr.FieldSet(args.[0], valueField, Expr.Coerce(value, typeof<obj>)),
+                        Expr.FieldSet(args.[0], caseField, case))
+                        
+                property :> MemberInfo)
+
+        let clearMethod = ProvidedMethod("Clear" + Naming.snakeToPascal name, [], typeof<Void>)
+        clearMethod.InvokeCode <- fun args -> 
+            Expr.Sequential(
+                Expr.FieldSet(args.[0], caseField, Expr.Value(0)),
+                Expr.FieldSet(args.[0], valueField, Expr.Value(null))
+            )
+        
+        [ valueField :> MemberInfo; 
+          oneofCaseEnum :> MemberInfo; 
+          caseField :> MemberInfo; 
+          caseProperty :> MemberInfo;
+          clearMethod :> MemberInfo ]
+        @ properties
