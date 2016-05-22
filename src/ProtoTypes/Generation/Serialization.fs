@@ -32,7 +32,7 @@ module Serialization =
         | x -> notsupportedf "Primitive type '%s' is not supported" x
         
     /// Creates an expression that serializes all given properties to the given instance of ZeroCopyBuffer
-    let private serializeProperty (prop: ProtoPropertyInfo) buffer this =
+    let private serializeProperty (prop: PropertyDescriptor) buffer this =
     
         let value = Expr.PropertyGet(this, prop.ProvidedProperty)
         let position = prop.Position
@@ -64,7 +64,7 @@ module Serialization =
             printfn "Failed to serialize property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex
             reraise()
             
-    let serializeExpr (typeInfo: ProvidedTypeInfo) buffer this =
+    let serializeExpr (typeInfo: TypeDescriptor) buffer this =
         let serializeProperties = 
             typeInfo.AllProperties
             |> List.sortBy (fun prop -> prop.Position)

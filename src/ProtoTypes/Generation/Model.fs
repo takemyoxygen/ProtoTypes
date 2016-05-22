@@ -10,7 +10,7 @@ type TypeKind =
     | Class
     | Enum
 
-type ProtoPropertyInfo = 
+type PropertyDescriptor = 
     { ProvidedProperty: ProvidedProperty;
       Position: FieldNum;
       ProtobufType: string;
@@ -22,15 +22,15 @@ type ProtoPropertyInfo =
         then this.ProvidedProperty.PropertyType.GenericTypeArguments.[0]
         else this.ProvidedProperty.PropertyType
         
-type ProvidedOneOfGroupInfo =
-    { Properties: Map<int, ProtoPropertyInfo>;
+type OneOfGroupDescriptor =
+    { Properties: Map<int, PropertyDescriptor>;
       CaseField: ProvidedField }
       
       
-type ProvidedTypeInfo = 
+type TypeDescriptor = 
     { Type: ProvidedTypeDefinition;
-      Properties: ProtoPropertyInfo list;
-      OneOfGroups: ProvidedOneOfGroupInfo list }
+      Properties: PropertyDescriptor list;
+      OneOfGroups: OneOfGroupDescriptor list }
       
     member this.AllProperties =
         this.OneOfGroups

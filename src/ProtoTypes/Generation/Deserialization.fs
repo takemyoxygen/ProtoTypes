@@ -33,13 +33,13 @@ module Deserialization =
         | x -> notsupportedf "Primitive type '%s' is not supported" x
 
     /// Creates quotation that converts RawField quotation to target property type
-    let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
+    let private deserializeField (property: PropertyDescriptor) (rawField: Expr) =
         match property.TypeKind with
         | Primitive -> primitiveReader rawField property.ProtobufType
         | Enum -> <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
-    let readFrom (typeInfo: ProvidedTypeInfo) this buffer =
+    let readFrom (typeInfo: TypeDescriptor) this buffer =
     
         // 1. Declare ResizeArray for all repeated fields
         // 2. Read all fields from given buffer
@@ -61,7 +61,7 @@ module Deserialization =
 
         /// For required and optional fields - set the property directly;
         /// for repeated - add to corresponding ResizeArray
-        let handleField (property: ProtoPropertyInfo) (field: Expr) =
+        let handleField (property: PropertyDescriptor) (field: Expr) =
             let value = deserializeField property field
             
             match property.Rule with
