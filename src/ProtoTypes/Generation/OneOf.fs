@@ -4,6 +4,7 @@ open System
 open System.Reflection
 open FSharp.Quotations
 
+open Froto.Parser.Model
 open Froto.Parser.Ast
 
 open ProtoTypes.Core
@@ -30,8 +31,8 @@ module OneOf =
         let valueField = ProvidedField(Naming.snakeToCamel name, typeof<obj>)
         let properties = 
             numberedMembers
-            |> List.map (fun (i, TOneOfField(name, ptype, _, _)) -> 
-                let _, propertyType =
+            |> List.map (fun (i, TOneOfField(name, ptype, position, _)) -> 
+                let kind, propertyType =
                     TypeResolver.resolvePType scope ptype typesLookup
                     |> Option.map (fun (kind, ty) -> kind, Expr.makeGenericType [ty] typedefof<option<_>>)
                     |> Option.require (sprintf "Unable to find type %A" ptype) 
@@ -55,7 +56,14 @@ module OneOf =
                         Expr.FieldSet(args.[0], valueField, Expr.Coerce(value, typeof<obj>)),
                         Expr.FieldSet(args.[0], caseField, case))
                         
-                property :> MemberInfo)
+                let propertyInfo =
+                    { ProvidedProperty = property;
+                      Position = int position;
+                      Rule = Optional;
+                      ProtobufType = TypeResolver.ptypeToString ptype;
+                      TypeKind = kind }
+
+                i, propertyInfo)
 
         let clearMethod = ProvidedMethod("Clear" + Naming.snakeToPascal name, [], typeof<Void>)
         clearMethod.InvokeCode <- fun args -> 
@@ -64,9 +72,16 @@ module OneOf =
                 Expr.FieldSet(args.[0], valueField, Expr.Value(null))
             )
         
-        [ valueField :> MemberInfo; 
-          oneofCaseEnum :> MemberInfo; 
-          caseField :> MemberInfo; 
-          caseProperty :> MemberInfo;
-          clearMethod :> MemberInfo ]
-        @ properties
+        let oneOfGroup = 
+            { Properties = properties |> Map.ofSeq;
+              CaseField = caseField }
+        
+        let allMembers = 
+            [ valueField :> MemberInfo; 
+              oneofCaseEnum :> MemberInfo; 
+              caseField :> MemberInfo; 
+              caseProperty :> MemberInfo;
+              clearMethod :> MemberInfo ]
+            |> List.append (properties |> List.map (fun (_, p) -> p.ProvidedProperty :> MemberInfo))
+            
+        oneOfGroup, allMembers

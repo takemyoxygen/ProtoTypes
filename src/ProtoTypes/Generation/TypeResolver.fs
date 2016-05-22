@@ -60,7 +60,7 @@ module internal TypeResolver =
         | "bytes" -> Some typeof<proto_bytes>
         | x -> None
         
-    let private ptypeToString = function
+    let ptypeToString = function
         | TDouble  -> "double" | TFloat -> "float"
         | TInt32   -> "int32"  | TInt64 -> "int64" | TUInt32 -> "uint32" | TUInt64 -> "uint64" | TSInt32 -> "sint32" | TSInt64 -> "sint64"
         | TFixed32 -> "fixed32"| TFixed64 -> "fixed64" | TSFixed32 -> "sfixed32" | TSFixed64 -> "sfixed64"

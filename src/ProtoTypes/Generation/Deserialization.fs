@@ -35,7 +35,7 @@ module Deserialization =
     /// Creates quotation that converts RawField quotation to target property type
     let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         match property.TypeKind with
-        | Primitive -> primitiveReader rawField property.ProtoBufType
+        | Primitive -> primitiveReader rawField property.ProtobufType
         | Enum -> <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 

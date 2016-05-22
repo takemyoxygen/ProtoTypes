@@ -39,7 +39,7 @@ module internal TypeGen =
             { ProvidedProperty = property;
               TypeKind = typeKind;
               Position = field.Position;
-              ProtoBufType = field.Type;
+              ProtobufType = field.Type;
               Rule = field.Rule }
             
         propertyInfo, backingField
@@ -109,11 +109,12 @@ module internal TypeGen =
         providedType.AddMembers(propertiesInfo |> List.map (fun p -> p.ProvidedProperty))
         providedType.AddMember <| Provided.ctor()
         
-        message.Parts 
-        |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
-        |> Seq.collect (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
-        |> Seq.iter providedType.AddMember
-    
+        let oneOfGroups = 
+            message.Parts 
+            |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
+            |> Seq.map (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
+            |> Seq.fold (fun all (info, members) -> providedType.AddMembers members; info::all) []
+
         let serializeMethod = createSerializeMethod propertiesInfo
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))

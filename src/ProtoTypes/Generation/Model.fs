@@ -13,7 +13,7 @@ type TypeKind =
 type ProtoPropertyInfo = 
     { ProvidedProperty: ProvidedProperty;
       Position: FieldNum;
-      ProtoBufType: string;
+      ProtobufType: string;
       Rule: ProtoFieldRule; 
       TypeKind: TypeKind }
       
@@ -21,3 +21,7 @@ type ProtoPropertyInfo =
         if this.ProvidedProperty.PropertyType.IsGenericType
         then this.ProvidedProperty.PropertyType.GenericTypeArguments.[0]
         else this.ProvidedProperty.PropertyType
+        
+type ProvidedOneOfGroupInfo =
+    { Properties: Map<int, ProtoPropertyInfo>;
+      CaseField: ProvidedField }
