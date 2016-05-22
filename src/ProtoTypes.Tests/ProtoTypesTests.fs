@@ -167,3 +167,17 @@ let ``Oneof properties test``() =
     oneofContainer.ValueCase |> should be (equal ValueOneofCase.None)
     oneofContainer.Identifier.IsSome |> should be False
     oneofContainer.Text.IsSome |> should be False
+    
+[<Test>]
+let ``Oneof properties serialization test``() = 
+    let oneofContainer = Sample.OneOfContainer()
+    oneofContainer.Identifier <- Some 42
+    oneofContainer.AnotherText <- "Some another text"
+    
+    let buffer = ZeroCopyBuffer 1000
+    oneofContainer.Serialize buffer |> ignore
+    let oneofContainer' = Sample.OneOfContainer.Deserialize <| ZeroCopyBuffer buffer.AsArraySegment
+    
+    oneofContainer.Identifier |> should be (equal oneofContainer'.Identifier)
+    oneofContainer.AnotherText |> should be (equal oneofContainer'.AnotherText)
+    oneofContainer.ValueCase |> should be (equal oneofContainer'.ValueCase)
