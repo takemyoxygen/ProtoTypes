@@ -33,13 +33,13 @@ module Deserialization =
         | x -> notsupportedf "Primitive type '%s' is not supported" x
 
     /// Creates quotation that converts RawField quotation to target property type
-    let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
+    let private deserializeField (property: PropertyDescriptor) (rawField: Expr) =
         match property.TypeKind with
-        | Primitive -> primitiveReader rawField property.ProtoField.Type
+        | Primitive -> primitiveReader rawField property.ProtobufType
         | Enum -> <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
-    let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =
+    let readFrom (typeInfo: TypeDescriptor) this buffer =
     
         // 1. Declare ResizeArray for all repeated fields
         // 2. Read all fields from given buffer
@@ -51,8 +51,8 @@ module Deserialization =
         
         // for repeated rules - map from property to variable
         let resizeArrays =
-            properties
-            |> Seq.filter (fun prop -> prop.ProtoField.Rule = Repeated)
+            typeInfo.AllProperties
+            |> Seq.filter (fun prop -> prop.Rule = Repeated)
             |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.UnderlyingType] typedefof<ResizeArray<_>>))
             |> dict
 
@@ -60,10 +60,10 @@ module Deserialization =
 
         /// For required and optional fields - set the property directly;
         /// for repeated - add to corresponding ResizeArray
-        let handleField (property: ProtoPropertyInfo) (field: Expr) =
+        let handleField (property: PropertyDescriptor) (field: Expr) =
             let value = deserializeField property field
             
-            match property.ProtoField.Rule with
+            match property.Rule with
             | Repeated -> 
                 let list = Expr.Var(resizeArrays.[property])
                 match property.TypeKind with
@@ -97,11 +97,11 @@ module Deserialization =
             Expr.PropertySet(this, property.ProvidedProperty, list)
 
         let fieldLoop = Expr.forLoop <@@ Codec.decodeFields %%buffer @@> (fun field ->
-            properties
+            typeInfo.AllProperties
             |> Seq.fold
                 (fun acc prop ->
                     Expr.IfThenElse(
-                        samePosition field prop.ProtoField.Position,
+                        samePosition field prop.Position,
                         handleField prop field,
                         acc))
                 (Expr.Value(())))
@@ -120,5 +120,5 @@ module Deserialization =
 
         with
         | ex ->
-           printfn "Failed to generate Deserialize method for type %s. Details: %O" ty.Name ex
+           printfn "Failed to generate Deserialize method for type %s. Details: %O" typeInfo.Type.Name ex
            reraise()
