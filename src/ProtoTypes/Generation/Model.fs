@@ -25,3 +25,16 @@ type ProtoPropertyInfo =
 type ProvidedOneOfGroupInfo =
     { Properties: Map<int, ProtoPropertyInfo>;
       CaseField: ProvidedField }
+      
+      
+type ProvidedTypeInfo = 
+    { Type: ProvidedTypeDefinition;
+      Properties: ProtoPropertyInfo list;
+      OneOfGroups: ProvidedOneOfGroupInfo list }
+      
+    member this.AllProperties =
+        this.OneOfGroups
+        |> Seq.collect (fun group -> group.Properties |> Map.toSeq)
+        |> Seq.map snd
+        |> Seq.append this.Properties
+        |> List.ofSeq

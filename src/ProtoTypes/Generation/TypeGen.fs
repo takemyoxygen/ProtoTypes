@@ -45,25 +45,25 @@ module internal TypeGen =
         propertyInfo, backingField
 
 
-    let private createSerializeMethod properties =
+    let private createSerializeMethod typeInfo =
         let serialize =
             ProvidedMethod(
                 "Serialize",
                 [ ProvidedParameter("buffer", typeof<ZeroCopyBuffer>) ],
                 typeof<ZeroCopyBuffer>,
-                InvokeCode = (fun args -> Serialization.serializeExpr properties args.[1] args.[0]))
+                InvokeCode = (fun args -> Serialization.serializeExpr typeInfo args.[1] args.[0]))
 
         serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public)
 
         serialize
         
-    let private createReadFromMethod properties targetType = 
+    let private createReadFromMethod typeInfo = 
         let readFrom = 
             ProvidedMethod(
                 "LoadFrom",
                 [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)],
                 typeof<ZeroCopyBuffer>,
-                InvokeCode = (fun args -> Deserialization.readFrom targetType properties args.[0] args.[1]))
+                InvokeCode = (fun args -> Deserialization.readFrom typeInfo args.[0] args.[1]))
 
         readFrom.SetMethodAttrs(MethodAttributes.Virtual)
 
@@ -114,12 +114,14 @@ module internal TypeGen =
             |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
             |> Seq.map (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
             |> Seq.fold (fun all (info, members) -> providedType.AddMembers members; info::all) []
+            
+        let typeInfo = { Type = providedType; Properties = propertiesInfo; OneOfGroups = oneOfGroups }
 
-        let serializeMethod = createSerializeMethod propertiesInfo
+        let serializeMethod = createSerializeMethod typeInfo
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
         
-        let readFromMethod = createReadFromMethod propertiesInfo providedType
+        let readFromMethod = createReadFromMethod typeInfo
         providedType.AddMember readFromMethod
         providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
         

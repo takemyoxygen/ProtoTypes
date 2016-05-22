@@ -39,7 +39,7 @@ module Deserialization =
         | Enum -> <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
-    let readFrom (ty: ProvidedTypeDefinition) (properties: ProtoPropertyInfo list) this buffer =
+    let readFrom (typeInfo: ProvidedTypeInfo) this buffer =
     
         // 1. Declare ResizeArray for all repeated fields
         // 2. Read all fields from given buffer
@@ -52,7 +52,7 @@ module Deserialization =
         
         // for repeated rules - map from property to variable
         let resizeArrays =
-            properties
+            typeInfo.AllProperties
             |> Seq.filter (fun prop -> prop.Rule = Repeated)
             |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.UnderlyingType] typedefof<ResizeArray<_>>))
             |> dict
@@ -98,7 +98,7 @@ module Deserialization =
             Expr.PropertySet(this, property.ProvidedProperty, list)
 
         let fieldLoop = Expr.forLoop <@@ Codec.decodeFields %%buffer @@> (fun field ->
-            properties
+            typeInfo.AllProperties
             |> Seq.fold
                 (fun acc prop ->
                     Expr.IfThenElse(
@@ -121,5 +121,5 @@ module Deserialization =
 
         with
         | ex ->
-           printfn "Failed to generate Deserialize method for type %s. Details: %O" ty.Name ex
+           printfn "Failed to generate Deserialize method for type %s. Details: %O" typeInfo.Type.Name ex
            reraise()
