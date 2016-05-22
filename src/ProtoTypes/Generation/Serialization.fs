@@ -63,12 +63,9 @@ module Serialization =
         | ex -> 
             printfn "Failed to serialize property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex
             reraise()
-            
-    let serializeExpr (typeInfo: TypeDescriptor) buffer this =
-        let serializeProperties = 
-            typeInfo.AllProperties
-            |> List.sortBy (fun prop -> prop.Position)
-            |> List.map (fun prop -> serializeProperty prop buffer this)
-            |> Expr.sequence 
 
-        Expr.Sequential(serializeProperties, buffer)
+    let serializeExpr (typeInfo: TypeDescriptor) buffer this = 
+        typeInfo.AllProperties
+        |> List.sortBy (fun prop -> prop.Position)
+        |> List.map (fun prop -> serializeProperty prop buffer this)
+        |> Expr.sequence 

@@ -34,7 +34,7 @@ let private createPerson() =
 
 let serializeDeserialize<'T when 'T :> Message> (msg: 'T) (deserialize: ZeroCopyBuffer -> 'T) =
     let buffer = ZeroCopyBuffer 1000
-    msg.Serialize buffer |> ignore
+    msg.Serialize buffer
     
     let buffer' = ZeroCopyBuffer buffer.AsArraySegment
     deserialize buffer'
@@ -175,7 +175,7 @@ let ``Oneof properties serialization test``() =
     oneofContainer.AnotherText <- "Some another text"
     
     let buffer = ZeroCopyBuffer 1000
-    oneofContainer.Serialize buffer |> ignore
+    oneofContainer.Serialize buffer
     let oneofContainer' = Sample.OneOfContainer.Deserialize <| ZeroCopyBuffer buffer.AsArraySegment
     
     oneofContainer.Identifier |> should be (equal oneofContainer'.Identifier)

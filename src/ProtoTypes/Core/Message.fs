@@ -11,15 +11,15 @@ type Message() as this =
  
     let mutable size = lazy (
         let buffer = NullWriteBuffer()
-        this.Serialize buffer |> ignore
+        this.Serialize buffer
         buffer.Length
     )
  
     member this.SerializedLength = size.Value
     
-    abstract Serialize: ZeroCopyBuffer -> ZeroCopyBuffer
+    abstract Serialize: ZeroCopyBuffer -> unit
     
-    abstract ReadFrom: ZeroCopyBuffer -> ZeroCopyBuffer
+    abstract ReadFrom: ZeroCopyBuffer -> unit
 
 /// Simple implementation of Message class that does nothing useful
 /// Basically, this class is needed only for type inference within quotations, because it satisfies requirements
@@ -27,5 +27,5 @@ type Message() as this =
 type internal Dummy() = 
     inherit Message()
     
-    override this.Serialize(buffer) = buffer
-    override this.ReadFrom(buffer) = buffer
+    override this.Serialize(buffer) = ()
+    override this.ReadFrom(buffer) = ()
