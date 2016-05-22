@@ -35,7 +35,7 @@ module Deserialization =
     /// Creates quotation that converts RawField quotation to target property type
     let private deserializeField (property: ProtoPropertyInfo) (rawField: Expr) =
         match property.TypeKind with
-        | Primitive -> primitiveReader rawField property.ProtoField.Type
+        | Primitive -> primitiveReader rawField property.ProtoBufType
         | Enum -> <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
@@ -53,7 +53,7 @@ module Deserialization =
         // for repeated rules - map from property to variable
         let resizeArrays =
             properties
-            |> Seq.filter (fun prop -> prop.ProtoField.Rule = Repeated)
+            |> Seq.filter (fun prop -> prop.Rule = Repeated)
             |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.UnderlyingType] typedefof<ResizeArray<_>>))
             |> dict
 
@@ -64,7 +64,7 @@ module Deserialization =
         let handleField (property: ProtoPropertyInfo) (field: Expr) =
             let value = deserializeField property field
             
-            match property.ProtoField.Rule with
+            match property.Rule with
             | Repeated -> 
                 let list = Expr.Var(resizeArrays.[property])
                 match property.TypeKind with
@@ -102,7 +102,7 @@ module Deserialization =
             |> Seq.fold
                 (fun acc prop ->
                     Expr.IfThenElse(
-                        samePosition field prop.ProtoField.Position,
+                        samePosition field prop.Position,
                         handleField prop field,
                         acc))
                 (Expr.Value(())))

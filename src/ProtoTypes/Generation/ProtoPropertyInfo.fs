@@ -3,6 +3,7 @@ namespace ProtoTypes.Generation
 open ProviderImplementation.ProvidedTypes
 
 open Froto.Parser.Model
+open Froto.Core.Encoding
 
 type TypeKind = 
     | Primitive
@@ -11,9 +12,10 @@ type TypeKind =
 
 type ProtoPropertyInfo = 
     { ProvidedProperty: ProvidedProperty;
-      BackingField: ProvidedField;
-      ProtoField: ProtoField; 
-      TypeKind: TypeKind}
+      Position: FieldNum;
+      ProtoBufType: string;
+      Rule: ProtoFieldRule; 
+      TypeKind: TypeKind }
       
     member this.UnderlyingType =
         if this.ProvidedProperty.PropertyType.IsGenericType

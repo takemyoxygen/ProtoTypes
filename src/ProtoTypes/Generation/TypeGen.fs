@@ -35,8 +35,14 @@ module internal TypeGen =
         let propertyType = applyRule field.Rule propertyType
         let propertyName = Naming.snakeToPascal field.Name
         let property, backingField = Provided.readWriteProperty propertyType propertyName
-        
-        { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
+        let propertyInfo = 
+            { ProvidedProperty = property;
+              TypeKind = typeKind;
+              Position = field.Position;
+              ProtoBufType = field.Type;
+              Rule = field.Rule }
+            
+        propertyInfo, backingField
 
 
     let private createSerializeMethod properties =
@@ -97,8 +103,10 @@ module internal TypeGen =
         message.Messages |> Seq.map (createType nestedScope lookup) |> Seq.iter providedType.AddMember
 
         let properties = message.Fields |> List.map (createProperty nestedScope lookup)
+        let propertiesInfo = properties |> List.map fst
 
-        properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
+        providedType.AddMembers(properties |> List.map snd)
+        providedType.AddMembers(propertiesInfo |> List.map (fun p -> p.ProvidedProperty))
         providedType.AddMember <| Provided.ctor()
         
         message.Parts 
@@ -106,11 +114,11 @@ module internal TypeGen =
         |> Seq.collect (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
         |> Seq.iter providedType.AddMember
     
-        let serializeMethod = createSerializeMethod properties
+        let serializeMethod = createSerializeMethod propertiesInfo
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
         
-        let readFromMethod = createReadFromMethod properties providedType
+        let readFromMethod = createReadFromMethod propertiesInfo providedType
         providedType.AddMember readFromMethod
         providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
         
