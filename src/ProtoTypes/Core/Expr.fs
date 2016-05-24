@@ -84,3 +84,5 @@ module Expr =
             
     let defaultOf ty =
         callStaticGeneric [ty] [] <@@ Unchecked.defaultof<_> @@>
+        
+    let apply lambda = Seq.fold (fun l arg -> Expr.Application(l, arg)) lambda

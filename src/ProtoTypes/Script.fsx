@@ -21,3 +21,12 @@ let buffer = ZeroCopyBuffer(1000)
 
 let container = Sample.MapContainer()
 container.People
+
+open ProtoTypes.Core
+open ProtoTypes.Generation
+<@@ Codec.writeRepeated x x x x@@>
+type Fun<'T> = int -> string -> 'T -> unit
+
+let foo<'T> : Fun<'T> = fun x y z -> ()
+
+<@@ foo @@>

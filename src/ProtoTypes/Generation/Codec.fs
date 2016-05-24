@@ -58,30 +58,32 @@ module Codec =
     let writeBytes: Writer<proto_bytes> = write Serializer.dehydrateBytes
 
     /// Serializes optional field using provided function to handle inner value if present
-    let writeOptional writeInner value =
-        match value with
-        | Some(v) -> writeInner v
-        | None -> ()
+    let writeOptional (writeInner: Writer<'T>) position buffer value =
+            match value with
+            | Some(v) -> writeInner position buffer v
+            | None -> ()
+            
+    let writeEmbedded position buffer (value: Message) =
+        buffer
+        |> WireFormat.encodeTag position WireType.LengthDelimited
+        |> WireFormat.encodeVarint (uint64 value.SerializedLength)
+        |> value.Serialize
         
     /// Value is expected to be of type option<'T>. It's not possible
     /// to use this type directly in the signature because of type providers limitations.
     /// All optional non-generated types (i.e. primitive types and enums) should be serialized using
     /// more strongly-typed writeOptional function
-    let writeOptionalEmbedded<'T when 'T :> Message> (writeInner: Message -> unit) (value: obj) =
-        if value <> null 
-        then value :?> option<'T> |> Option.get |> writeInner
-        
-    let writeRepeated writeItem values =
-        for value in values do writeItem value
-        
-    let writeRepeatedEmbedded<'T when 'T :> Message> (writeInner: Message -> unit) (value: obj) =
-        value :?> list<'T> |> List.iter writeInner
+    let writeOptionalEmbedded<'T when 'T :> Message> : Writer<obj> =
+        fun position buffer value ->
+            if value <> null 
+            then value :?> option<'T> |> Option.get |> writeEmbedded position buffer
 
-    let writeEmbedded fieldNumber buffer (message: Message) = 
-        buffer
-        |> WireFormat.encodeTag fieldNumber WireType.LengthDelimited
-        |> WireFormat.encodeVarint (uint64 message.SerializedLength)
-        |> message.Serialize
+    let writeRepeated (writeItem: Writer<'T>) position buffer value =
+        value |> Seq.iter (writeItem position buffer)
+
+    let writeRepeatedEmbedded<'T when 'T :> Message> : Writer<obj> =
+        fun position buffer value ->
+            value :?> list<'T> |> writeRepeated writeEmbedded position buffer
 
     let decodeFields (zcb: ZeroCopyBuffer) = seq {
         while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do
