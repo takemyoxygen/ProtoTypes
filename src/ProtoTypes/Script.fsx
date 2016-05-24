@@ -18,10 +18,6 @@ let address = Sample.Person.Address(Address1 = "Street", HouseNumber = 12, Whate
 let p = Sample.Person(Name = "Name", Id = 1, HasCriminalConvictions = false, Weight = 82.3, PersonGender = Sample.Person.Gender.Female, Email = Some "Email", PersonAddress = Some address)
 
 let buffer = ZeroCopyBuffer(1000)
-let oneof = Sample.OneOfContainer()
-oneof.Text <- Some "Text"
-oneof.AnotherText <- "Some another text"
-oneof.Serialize buffer
 
-let oneof2 = Sample.OneOfContainer.Deserialize <| ZeroCopyBuffer buffer.AsArraySegment
-oneof2
+let container = Sample.MapContainer()
+container.People

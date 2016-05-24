@@ -93,6 +93,35 @@ module internal TypeGen =
         
         providedEnum
 
+    let private createMap scope typesLookup (name: string) (keyTy: PKeyType) (valueTy: PType) (position: FieldNum) =
+        let keyType = 
+            match keyTy with 
+            | TKInt32 -> TInt32 | TKInt64 -> TInt64 
+            | TKUInt32 -> TUInt32 | TKUInt64 -> TUInt64 
+            | TKSInt32 -> TSInt32 | TKSInt64 -> TSInt64
+            | TKFixed32 -> TFixed32 | TKFixed64 -> TFixed64
+            | TKSFixed32 -> TSFixed32 | TKSFixed64 -> TSFixed64
+            | TKBool -> TBool
+            | TKString -> TString
+            |> TypeResolver.ptypeToString
+            
+        let valueType = TypeResolver.ptypeToString valueTy
+        
+        let mapType = 
+            Expr.makeGenericType 
+                [ TypeResolver.resolveScalar keyType |> Option.require (sprintf "Can't resolve scalar type '%s'" keyType); 
+                  TypeResolver.resolve scope valueType typesLookup |> Option.map snd |> Option.require (sprintf "Can't resolve type '%s'" valueType)]
+                typedefof<IReadOnlyDictionary<_, _>>
+                
+        let property, field = Provided.readOnlyProperty mapType <| Naming.snakeToPascal name
+        
+        let descriptor = 
+            { KeyType = keyType;
+              ValueType = valueType;
+              Property = property }
+              
+        descriptor, field
+
     let rec createType scope (lookup: TypesLookup) (message: ProtoMessage) = 
         let _, providedType = 
             TypeResolver.resolveNonScalar scope message.Name lookup 
@@ -115,7 +144,19 @@ module internal TypeGen =
             |> Seq.map (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
             |> Seq.fold (fun all (info, members) -> providedType.AddMembers members; info::all) []
             
-        let typeInfo = { Type = providedType; Properties = propertiesInfo; OneOfGroups = oneOfGroups }
+        let maps = 
+            message.Parts
+            |> Seq.choose (fun x -> 
+                match x with 
+                | TMap(name, keyTy, valueTy, position) -> Some <| createMap nestedScope lookup name keyTy valueTy (int position) 
+                | _ -> None)
+            |> Seq.fold (fun all (descriptor, field) -> 
+                providedType.AddMember field
+                providedType.AddMember descriptor.Property
+                descriptor::all) 
+                []
+
+        let typeInfo = { Type = providedType; Properties = propertiesInfo; OneOfGroups = oneOfGroups; Maps = maps }
 
         let serializeMethod = createSerializeMethod typeInfo
         providedType.AddMember serializeMethod

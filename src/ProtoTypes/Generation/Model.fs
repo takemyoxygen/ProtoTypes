@@ -26,11 +26,16 @@ type OneOfGroupDescriptor =
     { Properties: Map<int, PropertyDescriptor>;
       CaseField: ProvidedField }
       
+type MapDescriptor = 
+    { KeyType: string;
+      ValueType: string; 
+      Property: ProvidedProperty }
       
 type TypeDescriptor = 
     { Type: ProvidedTypeDefinition;
       Properties: PropertyDescriptor list;
-      OneOfGroups: OneOfGroupDescriptor list }
+      OneOfGroups: OneOfGroupDescriptor list;
+      Maps: MapDescriptor list }
       
     member this.AllProperties =
         this.OneOfGroups
