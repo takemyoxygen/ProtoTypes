@@ -101,4 +101,4 @@ module Serialization =
         typeInfo.AllProperties
         |> List.sortBy (fun prop -> prop.Position)
         |> List.map (fun prop -> serializeProperty prop buffer this)
-        |> Expr.sequence 
+        |> Expr.sequence
