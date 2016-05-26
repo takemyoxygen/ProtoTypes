@@ -1,13 +1,15 @@
-source https://www.nuget.org/api/v2
+group Nuget
+    source https://www.nuget.org/api/v2
 
-nuget FAKE
-nuget Froto.Parser >= 0.2.0 prerelease
-nuget FsCheck
-nuget FsUnit
-nuget NUnit
-nuget NUnit.Runners
-nuget Froto.Core
-
-github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fs
-github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fsi
-github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypesTesting.fs
+    nuget FAKE
+    nuget Froto.Parser >= 0.2.0 prerelease
+    nuget FsCheck
+    nuget FsUnit
+    nuget NUnit
+    nuget NUnit.Runners
+    nuget Froto.Core
+    
+group StarterPack
+    github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fs
+    github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fsi
+    github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypesTesting.fs

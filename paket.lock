@@ -1,32 +1,38 @@
+
+
+GROUP Nuget
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (4.25.4)
+    FAKE (4.27)
     FParsec (1.0.2) - framework: >= net45
     Froto.Core (0.2.1)
     Froto.Parser (0.2.1)
       FParsec (>= 1.0.2) - framework: >= net45
-    FsCheck (2.3)
+    FsCheck (2.4)
       FSharp.Core (>= 3.1.2.5)
     FSharp.Core (4.0.0.1)
     FsUnit (2.1)
       FSharp.Core (>= 3.1.2.5)
       NUnit (3.2)
     NUnit (3.2)
-    NUnit.ConsoleRunner (3.2)
-    NUnit.Extension.NUnitProjectLoader (3.2) 
-    NUnit.Extension.NUnitV2Driver (3.2)
-    NUnit.Extension.NUnitV2ResultWriter (3.2)
-    NUnit.Extension.VSProjectLoader (3.2)
-    NUnit.Runners (3.2)
-      NUnit.ConsoleRunner (3.2)
-      NUnit.Extension.NUnitProjectLoader (3.2)
-      NUnit.Extension.NUnitV2Driver (3.2)
-      NUnit.Extension.NUnitV2ResultWriter (3.2)
-      NUnit.Extension.VSProjectLoader (3.2)
+    NUnit.ConsoleRunner (3.2.1)
+    NUnit.Extension.NUnitProjectLoader (3.2.1)
+    NUnit.Extension.NUnitV2Driver (3.2.1)
+    NUnit.Extension.NUnitV2ResultWriter (3.2.1)
+    NUnit.Extension.VSProjectLoader (3.2.1)
+    NUnit.Runners (3.2.1)
+      NUnit.ConsoleRunner (3.2.1)
+      NUnit.Extension.NUnitProjectLoader (3.2.1)
+      NUnit.Extension.NUnitV2Driver (3.2.1)
+      NUnit.Extension.NUnitV2ResultWriter (3.2.1)
+      NUnit.Extension.VSProjectLoader (3.2.1)
+
+GROUP StarterPack
+
 GITHUB
   remote: fsprojects/FSharp.TypeProviders.StarterPack
   specs:
-    src/ProvidedTypes.fs (ea733039c168a8e2d441e298a1c67d98f63b00f6)
-    src/ProvidedTypes.fsi (ea733039c168a8e2d441e298a1c67d98f63b00f6)
-    src/ProvidedTypesTesting.fs (ea733039c168a8e2d441e298a1c67d98f63b00f6)
+    src/ProvidedTypes.fs (1ec57f583718953ac0e8e6a7023a37217e148f0a)
+    src/ProvidedTypes.fsi (1ec57f583718953ac0e8e6a7023a37217e148f0a)
+    src/ProvidedTypesTesting.fs (1ec57f583718953ac0e8e6a7023a37217e148f0a)

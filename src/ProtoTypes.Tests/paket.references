@@ -1,4 +1,5 @@
-﻿FsCheck
-FsUnit
-NUnit
-Froto.Core
+﻿group Nuget
+    FsCheck
+    FsUnit
+    NUnit
+    Froto.Core
