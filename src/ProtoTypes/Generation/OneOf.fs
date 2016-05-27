@@ -24,8 +24,13 @@ module OneOf =
         ("None", 0) :: (numberedMembers |> List.map (fun (i, TOneOfField(name, _, _, _)) -> Naming.snakeToPascal name, i))
         |> Provided.addEnumValues oneofCaseEnum
         
-        let caseField = ProvidedField(Naming.snakeToCamel name + "Case", typeof<int>)
-        let caseProperty = ProvidedProperty(Naming.camelToPascal caseField.Name, typeof<int>)
+        let caseEnumValue i = 
+            oneofCaseEnum.GetMembers().[i] 
+            :?> FieldInfo
+            |> Expr.FieldGet
+        
+        let caseField = ProvidedField(Naming.snakeToCamel name + "Case", oneofCaseEnum)
+        let caseProperty = ProvidedProperty(Naming.camelToPascal caseField.Name, oneofCaseEnum)
         caseProperty.GetterCode <- fun args -> Expr.FieldGet(args.[0], caseField)
 
         let valueField = ProvidedField(Naming.snakeToCamel name, typeof<obj>)
@@ -41,7 +46,7 @@ module OneOf =
                 
                 property.GetterCode <- fun args -> 
                     Expr.IfThenElse(
-                        Expr.equal (Expr.FieldGet(args.[0], caseField)) (Expr.Value(i)),
+                        Expr.equal (Expr.FieldGet(args.[0], caseField)) (caseEnumValue i),
                         Expr.Coerce(Expr.FieldGet(args.[0], valueField), propertyType),
                         Expr.defaultOf propertyType)
 
@@ -50,8 +55,8 @@ module OneOf =
                     let case = 
                         Expr.IfThenElse(
                             Expr.equal (Expr.Coerce(value, typeof<obj>)) (Expr.Value(null)),
-                            Expr.Value(0),
-                            Expr.Value(i))
+                            caseEnumValue 0,
+                            caseEnumValue i)
                     Expr.Sequential(
                         Expr.FieldSet(args.[0], valueField, Expr.Coerce(value, typeof<obj>)),
                         Expr.FieldSet(args.[0], caseField, case))
@@ -68,7 +73,7 @@ module OneOf =
         let clearMethod = ProvidedMethod("Clear" + Naming.snakeToPascal name, [], typeof<Void>)
         clearMethod.InvokeCode <- fun args -> 
             Expr.Sequential(
-                Expr.FieldSet(args.[0], caseField, Expr.Value(0)),
+                Expr.FieldSet(args.[0], caseField, caseEnumValue 0),
                 Expr.FieldSet(args.[0], valueField, Expr.Value(null))
             )
         
