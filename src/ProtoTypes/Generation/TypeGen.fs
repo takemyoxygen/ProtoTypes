@@ -48,7 +48,7 @@ module internal TypeGen =
             ProvidedMethod(
                 "Serialize",
                 [ ProvidedParameter("buffer", typeof<ZeroCopyBuffer>) ],
-                typeof<ZeroCopyBuffer>,
+                typeof<Void>,
                 InvokeCode = (fun args -> Serialization.serializeExpr typeInfo args.[1] args.[0]))
 
         serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public)
@@ -60,7 +60,7 @@ module internal TypeGen =
             ProvidedMethod(
                 "LoadFrom",
                 [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)],
-                typeof<System.Void>,
+                typeof<Void>,
                 InvokeCode = (fun args -> Deserialization.readFrom typeInfo args.[0] args.[1]))
 
         readFrom.SetMethodAttrs(MethodAttributes.Virtual)
