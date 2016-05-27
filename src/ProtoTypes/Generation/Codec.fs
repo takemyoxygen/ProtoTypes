@@ -24,14 +24,14 @@ type proto_bool = bool
 type proto_string = string
 type proto_bytes = ArraySegment<byte>
 
-type Writer<'T> = int -> ZeroCopyBuffer -> 'T -> unit
+type Writer<'T> = FieldNum -> ZeroCopyBuffer -> 'T -> unit
 type Reader<'T> = RawField -> 'T
 
 /// Contains helper functions to read/write values to/from ZeroCopyBuffer
 [<RequireQualifiedAccess>]
 module Codec =
 
-    let private write f (fieldNumber: int) (buffer: ZeroCopyBuffer) value =
+    let private write f (fieldNumber: FieldNum) (buffer: ZeroCopyBuffer) value =
         f fieldNumber value buffer |> ignore 
 
     let writeDouble: Writer<proto_double> = write Serializer.dehydrateDouble
@@ -82,7 +82,6 @@ module Codec =
         |> WireFormat.encodeTag fieldNumber WireType.LengthDelimited
         |> WireFormat.encodeVarint (uint64 message.SerializedLength)
         |> message.Serialize
-        |> ignore 
 
     let decodeFields (zcb: ZeroCopyBuffer) = seq {
         while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do
@@ -96,7 +95,7 @@ module Codec =
 
     let deserialize<'T when 'T :> Message and 'T : (new: unit -> 'T)> buffer =
         let x = new 'T()
-        x.ReadFrom buffer |> ignore
+        x.ReadFrom buffer
         x
 
     let readDouble: Reader<proto_double> = readField Serializer.hydrateDouble

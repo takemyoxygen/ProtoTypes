@@ -75,3 +75,12 @@ module Expr =
             enumeratorVar, 
             Expr.Call(sequence, sequence.Type.GetMethod("GetEnumerator"), []),
             Expr.Sequential(whileLoop, Expr.Call(enumeratorExpr, disposeMethod, [])))
+            
+    let equal (a: Expr) (b: Expr) =
+        if a.Type = b.Type then
+            callStaticGeneric [a.Type] [a; b] <@@ x = x @@>
+        else
+            invalidOp <| sprintf "Arguments should have the same type, but their types: %s and %s" a.Type.FullName b.Type.FullName
+            
+    let defaultOf ty =
+        callStaticGeneric [ty] [] <@@ Unchecked.defaultof<_> @@>

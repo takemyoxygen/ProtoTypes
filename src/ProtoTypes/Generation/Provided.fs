@@ -9,9 +9,9 @@ open ProviderImplementation.ProvidedTypes
 
 [<RequireQualifiedAccess>]
 module internal Provided =
-    
+
     let message name = ProvidedTypeDefinition(name, Some typeof<Message>, IsErased = false)
-    
+
     let enum name = 
         let enumTy = ProvidedTypeDefinition(name, Some typeof<Enum>, IsErased = false)
         enumTy.SetEnumUnderlyingType typeof<int>

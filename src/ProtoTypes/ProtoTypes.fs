@@ -59,7 +59,7 @@ type ProtocolBuffersTypeProviderCreator(config : TypeProviderConfig) as this=
                     provider.AddMember root
                     deepest
 
-            let lookup = TypesRegistry.discoverTypes rootScope protoFile.Messages
+            let lookup = TypeResolver.discoverTypes rootScope protoFile.Messages
             
             protoFile.Messages
             |> Seq.map (TypeGen.createType rootScope lookup)

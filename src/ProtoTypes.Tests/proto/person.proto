@@ -44,3 +44,12 @@ message PrimitiveContainer {
     required string string_field = 14;
     required bytes bytes_field = 15;
 }
+
+message OneOfContainer {
+    oneof value {
+        string text = 1;
+        int32 identifier = 2;
+    }
+    
+    required string another_text = 3;
+}

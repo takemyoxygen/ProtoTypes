@@ -33,3 +33,12 @@ let p =
         PersonAddress = Some address)
         
 p.PersonGender
+
+let buffer = ZeroCopyBuffer(1000)
+let oneof = Sample.OneOfContainer()
+oneof.Text <- Some "Text"
+oneof.AnotherText <- "Some another text"
+oneof.Serialize buffer
+
+let oneof2 = Sample.OneOfContainer.Deserialize <| ZeroCopyBuffer buffer.AsArraySegment
+oneof2

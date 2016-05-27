@@ -11,29 +11,12 @@ open ProtoTypes.Core
 open ProviderImplementation.ProvidedTypes
 
 open Froto.Parser.Model
+open Froto.Parser.Ast
 open Froto.Core
 open Froto.Core.Encoding
 
 [<RequireQualifiedAccess>]
 module internal TypeGen =
-
-    let private asScalarType = function
-        | "double" -> Some typeof<proto_double>
-        | "float" -> Some typeof<proto_float>
-        | "int32" -> Some typeof<proto_int32>
-        | "int64" -> Some typeof<proto_int64>
-        | "uint32" -> Some typeof<proto_uint32>
-        | "uint64" -> Some typeof<proto_uint64>
-        | "sint32" -> Some typeof<proto_sint32>
-        | "sint64" -> Some typeof<proto_sint64>
-        | "fixed32" -> Some typeof<proto_fixed32>
-        | "fixed64" -> Some typeof<proto_fixed64>
-        | "sfixed32" -> Some typeof<proto_sfixed32>
-        | "sfixed64" -> Some typeof<proto_sfixed64>
-        | "bool" -> Some typeof<proto_bool>
-        | "string" -> Some typeof<proto_string>
-        | "bytes" -> Some typeof<proto_bytes>
-        | x -> None
     
     let private applyRule rule (fieldType: Type) = 
         match rule with
@@ -43,44 +26,42 @@ module internal TypeGen =
 
     let private createProperty scope (lookup: TypesLookup) (field: ProtoField) =
 
-        let findInLookup() =
-            match TypesRegistry.resolve scope field.Type lookup with
-            | Some(Enum as k, t) | Some(Class as k, t) -> Some(k, t :> Type)
-            | _ -> None
-
         let typeKind, propertyType = 
-            asScalarType field.Type 
-            |> Option.map (fun t -> Primitive, t)
-            |> Option.otherwise findInLookup
-            |> Option.map (fun (kind, t) -> kind, applyRule field.Rule t)
-            |> Option.require (sprintf "Type '%s' is not supported" field.Type)
+            TypeResolver.resolve scope field.Type lookup
+            |> Option.require (sprintf "Unable to resolve type '%s'" field.Type)
             
+        let propertyType = applyRule field.Rule propertyType
         let propertyName = Naming.snakeToPascal field.Name
-        
         let property, backingField = Provided.readWriteProperty propertyType propertyName
-        
-        { ProvidedProperty = property; BackingField = backingField; ProtoField = field; TypeKind = typeKind }
+        let propertyInfo = 
+            { ProvidedProperty = property;
+              TypeKind = typeKind;
+              Position = field.Position;
+              ProtobufType = field.Type;
+              Rule = field.Rule }
+            
+        propertyInfo, backingField
 
 
-    let private createSerializeMethod properties =
+    let private createSerializeMethod typeInfo =
         let serialize =
             ProvidedMethod(
                 "Serialize",
                 [ ProvidedParameter("buffer", typeof<ZeroCopyBuffer>) ],
                 typeof<ZeroCopyBuffer>,
-                InvokeCode = (fun args -> Serialization.serializeExpr properties args.[1] args.[0]))
+                InvokeCode = (fun args -> Serialization.serializeExpr typeInfo args.[1] args.[0]))
 
         serialize.SetMethodAttrs(MethodAttributes.Virtual ||| MethodAttributes.Public)
 
         serialize
         
-    let private createReadFromMethod properties targetType = 
+    let private createReadFromMethod typeInfo = 
         let readFrom = 
             ProvidedMethod(
                 "LoadFrom",
                 [ProvidedParameter("buffer", typeof<ZeroCopyBuffer>)],
-                typeof<ZeroCopyBuffer>,
-                InvokeCode = (fun args -> Deserialization.readFrom targetType properties args.[0] args.[1]))
+                typeof<System.Void>,
+                InvokeCode = (fun args -> Deserialization.readFrom typeInfo args.[0] args.[1]))
 
         readFrom.SetMethodAttrs(MethodAttributes.Virtual)
 
@@ -101,7 +82,7 @@ module internal TypeGen =
     
     let private createEnum scope lookup (enum: ProtoEnum) =
         let _, providedEnum = 
-            TypesRegistry.resolve scope enum.Name lookup
+            TypeResolver.resolveNonScalar scope enum.Name lookup
             |> Option.require (sprintf "Enum '%s' is not defined" enum.Name)
         
         enum.Items
@@ -112,7 +93,7 @@ module internal TypeGen =
 
     let rec createType scope (lookup: TypesLookup) (message: ProtoMessage) = 
         let _, providedType = 
-            TypesRegistry.resolve scope message.Name lookup 
+            TypeResolver.resolveNonScalar scope message.Name lookup 
             |> Option.require (sprintf "Type '%s' is not defined" message.Name)
         
         let nestedScope = scope +.+ message.Name
@@ -120,15 +101,25 @@ module internal TypeGen =
         message.Messages |> Seq.map (createType nestedScope lookup) |> Seq.iter providedType.AddMember
 
         let properties = message.Fields |> List.map (createProperty nestedScope lookup)
+        let propertiesInfo = properties |> List.map fst
 
-        properties |> Seq.iter (fun p -> providedType.AddMember p.ProvidedProperty; providedType.AddMember p.BackingField)
+        providedType.AddMembers(properties |> List.map snd)
+        providedType.AddMembers(propertiesInfo |> List.map (fun p -> p.ProvidedProperty))
         providedType.AddMember <| Provided.ctor()
         
-        let serializeMethod = createSerializeMethod properties
+        let oneOfGroups = 
+            message.Parts 
+            |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
+            |> Seq.map (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
+            |> Seq.fold (fun all (info, members) -> providedType.AddMembers members; info::all) []
+            
+        let typeInfo = { Type = providedType; Properties = propertiesInfo; OneOfGroups = oneOfGroups }
+
+        let serializeMethod = createSerializeMethod typeInfo
         providedType.AddMember serializeMethod
         providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
         
-        let readFromMethod = createReadFromMethod properties providedType
+        let readFromMethod = createReadFromMethod typeInfo
         providedType.AddMember readFromMethod
         providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
         
