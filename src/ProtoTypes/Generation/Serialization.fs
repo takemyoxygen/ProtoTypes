@@ -1,5 +1,6 @@
 ﻿namespace ProtoTypes.Generation
 
+open System.Collections.Generic
 open Microsoft.FSharp.Quotations
 
 open ProtoTypes.Core
@@ -13,7 +14,7 @@ open Froto.Core.Encoding
 [<RequireQualifiedAccess>]
 module Serialization = 
 
-    let primitiveWriter = function
+    let private primitiveWriter = function
         | "double" -> <@@ Codec.writeDouble @@>
         | "float" -> <@@ Codec.writeFloat @@>
         | "int32" -> <@@ Codec.writeInt32 @@>
@@ -30,6 +31,28 @@ module Serialization =
         | "string" -> <@@ Codec.writeString @@>
         | "bytes" -> <@@ Codec.writeBytes @@>
         | x -> notsupportedf "Primitive type '%s' is not supported" x
+        
+    let serializeMap position buffer (map: IReadOnlyDictionary<'Key, 'Value>) keyWriter (valueWriter: Writer<'WireValue>) = 
+        let item = new MapItem<_, _>(Unchecked.defaultof<_>, Unchecked.defaultof<_>, keyWriter, valueWriter)
+        for pair in map do
+            item.Key <- pair.Key
+            item.Value <- box pair.Value :?> 'WireValue // TODO fix it without type casts
+            Codec.writeEmbedded position buffer item
+            
+    let private serializeMapExpr buffer this (map: MapDescriptor) =
+        let keyWriter = primitiveWriter map.KeyType
+        let keyType = map.Property.PropertyType.GenericTypeArguments.[0]
+        let valueType = map.Property.PropertyType.GenericTypeArguments.[1]
+        let valueWriter, wireValueType = 
+            match map.ValueTypeKind with
+            | Class -> <@@ Codec.writeEmbedded @@>, typeof<Message>
+            | Enum -> <@@ Codec.writeInt32 @@>, typeof<proto_int32>
+            | Primitive -> primitiveWriter map.ValueType, valueType
+        
+        Expr.callStaticGeneric 
+            [keyType; valueType; wireValueType]
+            [Expr.Value(map.Position); buffer; Expr.PropertyGet(this, map.Property); keyWriter; valueWriter]
+            <@@ serializeMap x x x x x @@>
         
     /// Creates an expression that serializes all given properties to the given instance of ZeroCopyBuffer
     let private serializeProperty (prop: PropertyDescriptor) buffer this =
@@ -81,24 +104,23 @@ module Serialization =
                 |> Expr.callStatic [Expr.Value(position); buffer; value]
             | Enum, rule -> callPrimitive <@@ Codec.writeInt32 @@> rule
             | Primitive, rule -> callPrimitive (primitiveWriter prop.ProtobufType) rule
-
-            // match prop.Rule with
-            // | Required -> Expr.Application(writer, value)
-            // | Optional ->
-            //     match prop.TypeKind with
-            //     | Class -> write <@@ Codec.writeOptionalEmbedded x x @@> <| Expr.Coerce(value, typeof<obj>)
-            //     | _ -> write <@@ Codec.writeOptional x x @@> value
-            // | Repeated ->
-            //     match prop.TypeKind with
-            //     | Class -> write <@@ Codec.writeRepeatedEmbedded x x @@> <| Expr.Coerce(value, typeof<obj>)
-            //     | _ -> write <@@ Codec.writeRepeated x x @@> value
         with
         | ex -> 
             printfn "Failed to serialize property %s: %O. Error: %O" prop.ProvidedProperty.Name value.Type ex
             reraise()
 
     let serializeExpr (typeInfo: TypeDescriptor) buffer this = 
-        typeInfo.AllProperties
-        |> List.sortBy (fun prop -> prop.Position)
-        |> List.map (fun prop -> serializeProperty prop buffer this)
-        |> Expr.sequence
+    
+        let properties =
+            typeInfo.AllProperties
+            |> List.sortBy (fun prop -> prop.Position)
+            |> List.map (fun prop -> serializeProperty prop buffer this)
+            |> Expr.sequence
+            
+        let maps =
+            typeInfo.Maps
+            |> List.sortBy (fun map -> map.Position)
+            |> List.map (serializeMapExpr buffer this)
+            |> Expr.sequence
+            
+        Expr.Sequential(properties, maps)

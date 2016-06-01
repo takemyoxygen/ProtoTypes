@@ -94,7 +94,7 @@ module internal TypeGen =
         providedEnum
 
     let private createMap scope typesLookup (name: string) (keyTy: PKeyType) (valueTy: PType) (position: FieldNum) =
-        let keyType = 
+        let keyTypeName = 
             match keyTy with 
             | TKInt32 -> TInt32 | TKInt64 -> TInt64 
             | TKUInt32 -> TUInt32 | TKUInt64 -> TUInt64 
@@ -105,70 +105,80 @@ module internal TypeGen =
             | TKString -> TString
             |> TypeResolver.ptypeToString
             
-        let valueType = TypeResolver.ptypeToString valueTy
+        let valueTypeName = TypeResolver.ptypeToString valueTy
+        let valueTypeKind, valueType = 
+            TypeResolver.resolve scope valueTypeName typesLookup 
+            |> Option.require (sprintf "Can't resolve type '%s'" valueTypeName)
         
         let mapType = 
             Expr.makeGenericType 
-                [ TypeResolver.resolveScalar keyType |> Option.require (sprintf "Can't resolve scalar type '%s'" keyType); 
-                  TypeResolver.resolve scope valueType typesLookup |> Option.map snd |> Option.require (sprintf "Can't resolve type '%s'" valueType)]
+                [ TypeResolver.resolveScalar keyTypeName |> Option.require (sprintf "Can't resolve scalar type '%s'" keyTypeName); 
+                  valueType]
                 typedefof<IReadOnlyDictionary<_, _>>
                 
-        let property, field = Provided.readOnlyProperty mapType <| Naming.snakeToPascal name
+        let property, field = Provided.readWriteProperty mapType <| Naming.snakeToPascal name
         
         let descriptor = 
-            { KeyType = keyType;
-              ValueType = valueType;
+            { KeyType = keyTypeName;
+              ValueType = valueTypeName;
+              ValueTypeKind = valueTypeKind;
+              Position = position;
               Property = property }
-              
+
         descriptor, field
 
     let rec createType scope (lookup: TypesLookup) (message: ProtoMessage) = 
-        let _, providedType = 
-            TypeResolver.resolveNonScalar scope message.Name lookup 
-            |> Option.require (sprintf "Type '%s' is not defined" message.Name)
-        
-        let nestedScope = scope +.+ message.Name
-        message.Enums |> Seq.map (createEnum nestedScope lookup) |> Seq.iter providedType.AddMember
-        message.Messages |> Seq.map (createType nestedScope lookup) |> Seq.iter providedType.AddMember
-
-        let properties = message.Fields |> List.map (createProperty nestedScope lookup)
-        let propertiesInfo = properties |> List.map fst
-
-        providedType.AddMembers(properties |> List.map snd)
-        providedType.AddMembers(propertiesInfo |> List.map (fun p -> p.ProvidedProperty))
-        providedType.AddMember <| Provided.ctor()
-        
-        let oneOfGroups = 
-            message.Parts 
-            |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
-            |> Seq.map (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
-            |> Seq.fold (fun all (info, members) -> providedType.AddMembers members; info::all) []
+        try
+            let _, providedType = 
+                TypeResolver.resolveNonScalar scope message.Name lookup 
+                |> Option.require (sprintf "Type '%s' is not defined" message.Name)
             
-        let maps = 
-            message.Parts
-            |> Seq.choose (fun x -> 
-                match x with 
-                | TMap(name, keyTy, valueTy, position) -> Some <| createMap nestedScope lookup name keyTy valueTy (int position) 
-                | _ -> None)
-            |> Seq.fold (fun all (descriptor, field) -> 
-                providedType.AddMember field
-                providedType.AddMember descriptor.Property
-                descriptor::all) 
-                []
+            let nestedScope = scope +.+ message.Name
+            message.Enums |> Seq.map (createEnum nestedScope lookup) |> Seq.iter providedType.AddMember
+            message.Messages |> Seq.map (createType nestedScope lookup) |> Seq.iter providedType.AddMember
 
-        let typeInfo = { Type = providedType; Properties = propertiesInfo; OneOfGroups = oneOfGroups; Maps = maps }
+            let properties = message.Fields |> List.map (createProperty nestedScope lookup)
+            let propertiesInfo = properties |> List.map fst
 
-        let serializeMethod = createSerializeMethod typeInfo
-        providedType.AddMember serializeMethod
-        providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
-        
-        let readFromMethod = createReadFromMethod typeInfo
-        providedType.AddMember readFromMethod
-        providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
-        
-        providedType.AddMember <| createDeserializeMethod properties providedType
-        
-        providedType
+            providedType.AddMembers(properties |> List.map snd)
+            providedType.AddMembers(propertiesInfo |> List.map (fun p -> p.ProvidedProperty))
+            providedType.AddMember <| Provided.ctor()
+            
+            let oneOfGroups = 
+                message.Parts 
+                |> Seq.choose (fun x -> match x with | TOneOf(name, members) -> Some((name, members)) | _ -> None)
+                |> Seq.map (fun (name, members) -> OneOf.generateOneOf nestedScope lookup name members)
+                |> Seq.fold (fun all (info, members) -> providedType.AddMembers members; info::all) []
+                
+            let maps = 
+                message.Parts
+                |> Seq.choose (fun x -> 
+                    match x with 
+                    | TMap(name, keyTy, valueTy, position) -> Some <| createMap nestedScope lookup name keyTy valueTy (int position) 
+                    | _ -> None)
+                |> Seq.fold (fun all (descriptor, field) -> 
+                    providedType.AddMember field
+                    providedType.AddMember descriptor.Property
+                    descriptor::all) 
+                    []
+
+            let typeInfo = { Type = providedType; Properties = propertiesInfo; OneOfGroups = oneOfGroups; Maps = maps }
+
+            let serializeMethod = createSerializeMethod typeInfo
+            providedType.AddMember serializeMethod
+            providedType.DefineMethodOverride(serializeMethod, typeof<Message>.GetMethod("Serialize"))
+            
+            let readFromMethod = createReadFromMethod typeInfo
+            providedType.AddMember readFromMethod
+            providedType.DefineMethodOverride(readFromMethod, typeof<Message>.GetMethod("ReadFrom"))
+            
+            providedType.AddMember <| createDeserializeMethod properties providedType
+            
+            providedType
+        with
+        | ex ->
+            printfn "An error occurred while generating type for message %s: %O" message.Name ex
+            reraise()
     
     /// For the given package e.g. "foo.bar.baz.abc" creates a hierarchy of nested types Foo.Bar.Baz.Abc 
     /// and returns pair of the first and last types in the hirarchy, Foo and Abc in this case

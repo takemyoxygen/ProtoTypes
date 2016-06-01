@@ -20,13 +20,7 @@ let p = Sample.Person(Name = "Name", Id = 1, HasCriminalConvictions = false, Wei
 let buffer = ZeroCopyBuffer(1000)
 
 let container = Sample.MapContainer()
-container.People
-
-open ProtoTypes.Core
-open ProtoTypes.Generation
-<@@ Codec.writeRepeated x x x x@@>
-type Fun<'T> = int -> string -> 'T -> unit
-
-let foo<'T> : Fun<'T> = fun x y z -> ()
-
-<@@ foo @@>
+let map = System.Collections.Generic.Dictionary<_, _>()
+map.Add(1, "ololo")
+container.PrimitiveMap <- map
+container.Serialize(buffer)

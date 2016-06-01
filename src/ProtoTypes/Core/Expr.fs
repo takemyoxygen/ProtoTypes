@@ -12,7 +12,9 @@ open ProviderImplementation.ProvidedTypes
 [<RequireQualifiedAccess>]
 module Expr =
 
-    let sequence: seq<Expr> -> Expr = Seq.reduce (fun acc s -> Expr.Sequential(acc, s))
+    let sequence expressions = 
+        if expressions |> Seq.isEmpty then Expr.Value(()) 
+        else expressions |> Seq.reduce (fun acc s -> Expr.Sequential(acc, s))
 
     let getMethodDef = function
         | Call(_, m, _) ->

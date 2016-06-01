@@ -29,3 +29,21 @@ type internal Dummy() =
     
     override this.Serialize(buffer) = ()
     override this.ReadFrom(buffer) = ()
+    
+    
+type internal MapItem<'Key, 'Value>
+    ( keyReader: Reader<'Key>,
+      valueReader: Reader<'Value>,
+      keyWriter: Writer<'Key>,
+      valueWriter: Writer<'Value> ) =
+    inherit Message()
+    
+    member val Key = Unchecked.defaultof<'Key> with get, set
+    member val Value = Unchecked.defaultof<'Value> with get, set
+    
+    override this.Serialize(buffer) =
+        keyWriter 1 buffer this.Key
+        valueWriter 2 buffer this.Value
+        
+    override this.ReadFrom(buffer) =
+        notsupportedf "Deserializing maps is not yet supported."

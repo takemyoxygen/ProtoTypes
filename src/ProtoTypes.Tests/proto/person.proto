@@ -56,5 +56,5 @@ message OneOfContainer {
 
 message MapContainer {
     required int32 id = 1;
-    map<string, Person> people = 2;
+    map<int32, string> primitive_map = 2;
 }

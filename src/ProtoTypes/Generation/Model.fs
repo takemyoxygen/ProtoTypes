@@ -29,6 +29,8 @@ type OneOfGroupDescriptor =
 type MapDescriptor = 
     { KeyType: string;
       ValueType: string; 
+      ValueTypeKind: TypeKind;
+      Position: FieldNum;
       Property: ProvidedProperty }
       
 type TypeDescriptor = 
