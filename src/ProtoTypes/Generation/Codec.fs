@@ -1,6 +1,7 @@
 namespace ProtoTypes.Generation
 
 open System
+open System.Collections.Generic
 
 open Froto.Core
 open Froto.Core.Encoding
@@ -64,6 +65,14 @@ module Codec =
     let writeRepeatedEmbedded<'T when 'T :> Message> : Writer<obj> =
         fun position buffer value ->
             value :?> list<'T> |> writeRepeated writeEmbedded position buffer
+            
+    let writePrimitiveMap writeKey writeValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
+        fun position buffer value ->
+            let item = new MapItem<_, _>(Unchecked.defaultof<_>, Unchecked.defaultof<_>, writeKey, writeValue)
+            for pair in value do
+                item.Key <- pair.Key
+                item.Value <- pair.Value
+                writeEmbedded position buffer item
 
     let decodeFields (zcb: ZeroCopyBuffer) = seq {
         while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do
