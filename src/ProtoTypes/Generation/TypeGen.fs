@@ -109,6 +109,9 @@ module internal TypeGen =
         let valueTypeKind, valueType = 
             TypeResolver.resolve scope valueTypeName typesLookup 
             |> Option.require (sprintf "Can't resolve type '%s'" valueTypeName)
+            |> function
+                | Enum, _ -> TypeKind.Enum, typeof<proto_int32>
+                | kind, ty -> kind, ty
         
         let mapType = 
             Expr.makeGenericType 

@@ -86,6 +86,10 @@ module Codec =
                 position
                 buffer 
                 (value :?> IReadOnlyDictionary<'Key, 'Value>)
+                
+    let writeEnumMap<'Key> writeKey : Writer<IReadOnlyDictionary<'Key, proto_int32>> =
+        fun position buffer value ->
+            writeMap writeKey writeInt32 id position buffer value
 
     let decodeFields (zcb: ZeroCopyBuffer) = seq {
         while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do

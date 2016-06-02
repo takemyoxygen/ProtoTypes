@@ -195,6 +195,10 @@ let ``Map test``() =
     people.Add("Vasya", createPerson())
     mapContainer.People <- people
     
+    let switches = Dictionary<_, _>()
+    switches.Add(1, Sample.MapContainer.Switch.On)
+    mapContainer.Switches <- switches
+    
     let buffer = mapContainer.SerializedLength |> int |> ZeroCopyBuffer
     mapContainer.Serialize buffer
     

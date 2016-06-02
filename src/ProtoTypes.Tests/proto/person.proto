@@ -55,7 +55,13 @@ message OneOfContainer {
 }
 
 message MapContainer {
+    enum Switch {
+        ON = 0;
+        OFF = 1;
+    }
+
     required int32 id = 1;
     map<int32, string> primitive_map = 2;
     map<string, Person> people = 3;
+    map<int32, Switch> switches = 4;
 }

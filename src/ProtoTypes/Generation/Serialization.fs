@@ -50,6 +50,11 @@ module Serialization =
                 [keyType; valueType]
                 [keyWriter; positionExpr; buffer; Expr.Coerce(mapExpr, typeof<obj>)]
                 <@@ Codec.writeMessageMap x x x x @@>
+        | Enum ->
+            Expr.callStaticGeneric
+                [keyType]
+                [keyWriter; positionExpr; buffer; mapExpr]
+                <@@ Codec.writeEnumMap x x x x @@>
         | _ -> notsupportedf "Serializing of a map with values of type %s is not supported" valueType.Name
         
     /// Creates an expression that serializes all given properties to the given instance of ZeroCopyBuffer
