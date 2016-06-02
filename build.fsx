@@ -17,7 +17,7 @@ Target "Clean" (fun _ ->
 )
 
 Target "Build" (fun _ ->
-    MSBuildDebug outputDirectory "Build" solution
+    MSBuildDebug outputDirectory "Rebuild" solution
     |> Log "AppBuild-Output: "
 )
 

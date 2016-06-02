@@ -66,13 +66,26 @@ module Codec =
         fun position buffer value ->
             value :?> list<'T> |> writeRepeated writeEmbedded position buffer
             
-    let writePrimitiveMap writeKey writeValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
+    let private writeMap writeKey writeValue convertValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
         fun position buffer value ->
             let item = new MapItem<_, _>(Unchecked.defaultof<_>, Unchecked.defaultof<_>, writeKey, writeValue)
             for pair in value do
                 item.Key <- pair.Key
-                item.Value <- pair.Value
+                item.Value <- convertValue pair.Value
                 writeEmbedded position buffer item
+
+    let writePrimitiveMap writeKey writeValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
+        fun position buffer value -> writeMap writeKey writeValue id position buffer value
+        
+    let writeMessageMap<'Key, 'Value when 'Value :> Message> writeKey : Writer<obj> =
+        fun position buffer value -> 
+            writeMap 
+                writeKey
+                writeEmbedded 
+                (fun msg -> msg :> Message) 
+                position
+                buffer 
+                (value :?> IReadOnlyDictionary<'Key, 'Value>)
 
     let decodeFields (zcb: ZeroCopyBuffer) = seq {
         while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do

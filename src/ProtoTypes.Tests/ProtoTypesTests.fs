@@ -191,6 +191,10 @@ let ``Map test``() =
     map.Add(2, "bar")
     mapContainer.PrimitiveMap <- map
     
+    let people = Dictionary<_, _>()
+    people.Add("Vasya", createPerson())
+    mapContainer.People <- people
+    
     let buffer = mapContainer.SerializedLength |> int |> ZeroCopyBuffer
     mapContainer.Serialize buffer
     

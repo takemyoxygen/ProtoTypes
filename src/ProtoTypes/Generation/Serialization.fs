@@ -36,15 +36,21 @@ module Serialization =
         let keyWriter = primitiveWriter map.KeyType
         let keyType = map.Property.PropertyType.GenericTypeArguments.[0]
         let valueType = map.Property.PropertyType.GenericTypeArguments.[1]
-        let valueWriter, mapWriter = 
-            match map.ValueTypeKind with
-            | Primitive -> primitiveWriter map.ValueType, <@@ Codec.writePrimitiveMap x x x x x @@>
-            | _ -> notsupportedf "Serializing of a map with values of type %s is not supported" valueType.Name
+        let positionExpr = Expr.Value(map.Position)
+        let mapExpr = Expr.PropertyGet(this, map.Property)
         
-        Expr.callStaticGeneric 
-            [keyType; valueType]
-            [keyWriter; valueWriter; Expr.Value(map.Position); buffer; Expr.PropertyGet(this, map.Property)]
-            mapWriter
+        match map.ValueTypeKind with
+        | Primitive ->
+            Expr.callStaticGeneric 
+                [keyType; valueType]
+                [keyWriter; primitiveWriter map.ValueType; positionExpr; buffer; mapExpr]
+                <@@ Codec.writePrimitiveMap x x x x x @@>
+        | Class -> 
+            Expr.callStaticGeneric
+                [keyType; valueType]
+                [keyWriter; positionExpr; buffer; Expr.Coerce(mapExpr, typeof<obj>)]
+                <@@ Codec.writeMessageMap x x x x @@>
+        | _ -> notsupportedf "Serializing of a map with values of type %s is not supported" valueType.Name
         
     /// Creates an expression that serializes all given properties to the given instance of ZeroCopyBuffer
     let private serializeProperty buffer this prop =
