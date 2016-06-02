@@ -2,6 +2,7 @@
 module ProtoTypes.Tests
 
 open System
+open System.Collections.Generic
 
 open NUnit.Framework
 open FsUnit
@@ -181,3 +182,16 @@ let ``Oneof properties serialization test``() =
     oneofContainer.Identifier |> should be (equal oneofContainer'.Identifier)
     oneofContainer.AnotherText |> should be (equal oneofContainer'.AnotherText)
     oneofContainer.ValueCase |> should be (equal oneofContainer'.ValueCase)
+    
+[<Test>]
+let ``Map test``() =
+    let mapContainer = Sample.MapContainer()
+    let map = Dictionary<_, _>()
+    map.Add(1, "foo")
+    map.Add(2, "bar")
+    mapContainer.PrimitiveMap <- map
+    
+    let buffer = mapContainer.SerializedLength |> int |> ZeroCopyBuffer
+    mapContainer.Serialize buffer
+    
+    
