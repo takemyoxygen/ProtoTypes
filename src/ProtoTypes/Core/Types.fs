@@ -1,6 +1,7 @@
 namespace ProtoTypes.Core
 
 open System
+open System.Collections.Generic
 
 open Froto.Core
 open Froto.Core.Encoding
@@ -21,6 +22,8 @@ type proto_sfixed64 = int64
 type proto_bool = bool
 type proto_string = string
 type proto_bytes = ArraySegment<byte>
+type proto_map<'Key, 'Value> = IReadOnlyDictionary<'Key, 'Value>
+type proto_map_concrete<'Key, 'Value> = Dictionary<'Key, 'Value>
 
 type Writer<'T> = FieldNum -> ZeroCopyBuffer -> 'T -> unit
 type Reader<'T> = RawField -> 'T

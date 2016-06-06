@@ -1,6 +1,7 @@
 ﻿namespace ProtoTypes.Generation
 
 open System
+open System.Collections.Generic
 open FSharp.Quotations
 
 open ProtoTypes.Core
@@ -14,32 +15,32 @@ open Froto.Core.Encoding
 [<RequireQualifiedAccess>]
 module Deserialization =
 
-    let private primitiveReader rawField = function
-        | "double" -> <@@ Codec.readDouble %%rawField @@>
-        | "float" -> <@@ Codec.readFloat %%rawField @@>
-        | "int32" -> <@@ Codec.readInt32 %%rawField @@>
-        | "int64" -> <@@ Codec.readInt64 %%rawField @@>
-        | "uint32" -> <@@ Codec.readUInt32 %%rawField @@>
-        | "uint64" -> <@@ Codec.readUInt64 %%rawField @@>
-        | "sint32" -> <@@ Codec.readSInt32 %%rawField @@>
-        | "sint64" -> <@@ Codec.readSInt64 %%rawField @@>
-        | "fixed32" -> <@@ Codec.readFixed32 %%rawField @@>
-        | "fixed64" -> <@@ Codec.readFixed64 %%rawField @@>
-        | "sfixed32" -> <@@ Codec.readSFixed32 %%rawField @@>
-        | "sfixed64" -> <@@ Codec.readSFixed64 %%rawField @@>
-        | "bool" -> <@@ Codec.readBool %%rawField @@>
-        | "string" -> <@@ Codec.readString %%rawField @@>
-        | "bytes" -> <@@ Codec.readBytes %%rawField @@>
+    let private primitiveReader = function
+        | "double" -> <@@ Codec.readDouble @@>
+        | "float" -> <@@ Codec.readFloat @@>
+        | "int32" -> <@@ Codec.readInt32 @@>
+        | "int64" -> <@@ Codec.readInt64 @@>
+        | "uint32" -> <@@ Codec.readUInt32 @@>
+        | "uint64" -> <@@ Codec.readUInt64 @@>
+        | "sint32" -> <@@ Codec.readSInt32 @@>
+        | "sint64" -> <@@ Codec.readSInt64 @@>
+        | "fixed32" -> <@@ Codec.readFixed32 @@>
+        | "fixed64" -> <@@ Codec.readFixed64 @@>
+        | "sfixed32" -> <@@ Codec.readSFixed32 @@>
+        | "sfixed64" -> <@@ Codec.readSFixed64 @@>
+        | "bool" -> <@@ Codec.readBool @@>
+        | "string" -> <@@ Codec.readString @@>
+        | "bytes" -> <@@ Codec.readBytes @@>
         | x -> notsupportedf "Primitive type '%s' is not supported" x
 
     /// Creates quotation that converts RawField quotation to target property type
     let private deserializeField (property: PropertyDescriptor) (rawField: Expr) =
         match property.TypeKind with
-        | Primitive -> primitiveReader rawField property.ProtobufType
+        | Primitive -> Expr.Application(primitiveReader property.ProtobufType, rawField)
         | Enum -> <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
-    let readFrom (typeInfo: TypeDescriptor) this buffer =
+    let readFrom (typeInfo: TypeDescriptor) this allFields =
     
         // 1. Declare ResizeArray for all repeated fields
         // 2. Read all fields from given buffer
@@ -54,6 +55,16 @@ module Deserialization =
             typeInfo.AllProperties
             |> Seq.filter (fun prop -> prop.Rule = Repeated)
             |> Seq.map (fun prop -> prop, Var(prop.ProvidedProperty.Name, Expr.makeGenericType [prop.UnderlyingType] typedefof<ResizeArray<_>>))
+            |> dict
+            
+        let dictionaries = 
+            typeInfo.Maps
+            |> Seq.map (fun map -> 
+                map, 
+                Var(map.Property.Name, 
+                    Expr.makeGenericType 
+                        (map.Property.PropertyType.GenericTypeArguments |> List.ofArray) 
+                        typedefof<Dictionary<_, _>>))
             |> dict
 
         let samePosition field idx = <@@ (%%field: RawField).FieldNum = idx @@>
@@ -80,6 +91,32 @@ module Deserialization =
                 Expr.PropertySet(this, property.ProvidedProperty, someValue)
             | Required ->
                 Expr.PropertySet(this, property.ProvidedProperty, value)
+                
+        let handleMap map field = 
+            let dict = Expr.Var(dictionaries.[map])
+            let keyReader = primitiveReader map.KeyType
+
+            let readMethod, args =
+                match map.ValueTypeKind with
+                | Primitive -> 
+                    <@@ Codec.readMapElement x x x x @@>,
+                    [dict; keyReader; primitiveReader map.ValueType; field]
+                | Enum -> 
+                    <@@ Codec.readMapElement x x x x @@>,
+                    [dict; keyReader; <@@ Codec.readInt32 @@>; field]
+                | Class -> 
+                        <@@ Codec.readMessageMapElement<_, Dummy> x x x @@>,
+                        [ Expr.box dict; keyReader; field ]
+                        
+            Expr.callStaticGeneric
+                (dict.Type.GenericTypeArguments |> List.ofArray)
+                args
+                readMethod
+//            Expr.callStaticGeneric
+//                (dict.Type.GenericTypeArguments |> List.ofArray)
+//                // TODO introduct Expr.box instead of using Expr.Coerce(xxx, typeof<obj>)
+//                [Expr.Coerce(dict, typeof<obj>); keyReader; valueReader; field]
+//                <@@ Codec.readMapElement x x x x @@>
 
         /// Converts ResizeArray to immutable list and sets corresponding repeated property
         let setRepeatedProperty property (resizeArrayVar: Var) =
@@ -96,7 +133,18 @@ module Deserialization =
 
             Expr.PropertySet(this, property.ProvidedProperty, list)
 
-        let fieldLoop = Expr.forLoop <@@ Codec.decodeFields %%buffer @@> (fun field ->
+        let fieldLoop = Expr.forLoop <@@ ZeroCopyBuffer.allFields %%allFields @@> (fun field ->
+            let maps = 
+                typeInfo.Maps
+                |> Seq.fold 
+                    (fun acc prop ->
+                        Expr.IfThenElse(
+                            samePosition field prop.Position,
+                            handleMap prop field,
+                            acc
+                        ))
+                    (Expr.Value(()))
+
             typeInfo.AllProperties
             |> Seq.fold
                 (fun acc prop ->
@@ -104,7 +152,7 @@ module Deserialization =
                         samePosition field prop.Position,
                         handleField prop field,
                         acc))
-                (Expr.Value(())))
+                maps)
 
         let setRepeatedFields =
             resizeArrays
@@ -115,7 +163,11 @@ module Deserialization =
         
         let body = fieldLoop :: setRepeatedFields |> Expr.sequence
 
-        resizeArrays.Values
+        let body = 
+            resizeArrays.Values
+            |> Seq.fold (fun acc var -> Expr.Let(var, create var.Type, acc)) body
+        
+        dictionaries.Values
         |> Seq.fold (fun acc var -> Expr.Let(var, create var.Type, acc)) body
 
         with

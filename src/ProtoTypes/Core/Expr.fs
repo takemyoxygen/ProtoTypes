@@ -87,4 +87,7 @@ module Expr =
     let defaultOf ty =
         callStaticGeneric [ty] [] <@@ Unchecked.defaultof<_> @@>
         
+    // TODO check if Expr.Applications does the same
     let apply lambda = Seq.fold (fun l arg -> Expr.Application(l, arg)) lambda
+
+    let box expr = Expr.Coerce(expr, typeof<obj>)

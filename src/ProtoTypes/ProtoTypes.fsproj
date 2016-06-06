@@ -83,6 +83,7 @@
     <Compile Include="Core/Types.fs" />
     <Compile Include="Core/Expr.fs" />
     <Compile Include="Core/Naming.fs" />
+    <Compile Include="Core/ZeroCopyBuffer.fs" />
     <Compile Include="Core/Message.fs" />
     <Compile Include="Core/ResizeArray.fs" />
     <Compile Include="Generation/Codec.fs" />

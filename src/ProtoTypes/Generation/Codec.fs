@@ -68,7 +68,7 @@ module Codec =
             
     let private writeMap writeKey writeValue convertValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
         fun position buffer value ->
-            let item = new MapItem<_, _>(Unchecked.defaultof<_>, Unchecked.defaultof<_>, writeKey, writeValue)
+            let item = new MapItem<_, _>(x, x, writeKey, writeValue)
             for pair in value do
                 item.Key <- pair.Key
                 item.Value <- convertValue pair.Value
@@ -76,7 +76,7 @@ module Codec =
 
     let writePrimitiveMap writeKey writeValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
         fun position buffer value -> writeMap writeKey writeValue id position buffer value
-        
+
     let writeMessageMap<'Key, 'Value when 'Value :> Message> writeKey : Writer<obj> =
         fun position buffer value -> 
             writeMap 
@@ -91,11 +91,6 @@ module Codec =
         fun position buffer value ->
             writeMap writeKey writeInt32 id position buffer value
 
-    let decodeFields (zcb: ZeroCopyBuffer) = seq {
-        while (not zcb.IsEof) && zcb.Array.[int zcb.Position] > 7uy do
-            yield WireFormat.decodeField zcb
-    }
-    
     let private readField<'T> f field = 
         let result = ref Unchecked.defaultof<'T>
         f result field
@@ -126,3 +121,14 @@ module Codec =
         match field with
         | LengthDelimited(_, segment) -> ZeroCopyBuffer segment |> deserialize<'T>
         | _ -> failwithf "Invalid format of the field: %O" field
+        
+    let readMapElement<'Key, 'Value> (map: proto_map_concrete<_, _>) keyReader (valueReader: Reader<'Value>) field =
+        match field with
+        | LengthDelimited(_, segment) ->
+            let item = MapItem(keyReader, valueReader, x, x)
+            item.ReadFrom <| ZeroCopyBuffer segment
+            (map :?> Dictionary<'Key, 'Value>).Add(item.Key, item.Value)
+        | _ -> failwithf "Invalid format of the field: %O" field
+
+    let readMessageMapElement<'Key, 'Value when 'Value :> Message and 'Value : (new: unit -> 'Value)> (map: obj) keyReader field =
+        readMapElement (map :?> proto_map_concrete<'Key, 'Value>) keyReader readEmbedded<'Value> field
