@@ -42,11 +42,13 @@ module Deserialization =
 
     let readFrom (typeInfo: TypeDescriptor) this allFields =
     
-        // 1. Declare ResizeArray for all repeated fields
-        // 2. Read all fields from given buffer
-        // 3. Iterate over fields read: if FieldNum matches field position - 
+        // 1. Declare local vars of type Dictionary<,> for all map fields
+        // 2. Declare ResizeArray local variables for all repeated fields
+        // 3. Read all fields from given buffer
+        // 4. Iterate over fields read: if FieldNum matches field position - 
         //    set corresponding property or add value to the ResizeArray (for repeated fields)
-        // 4. Convert ResizeArray to lists and set repeated fields
+        // 5. Convert ResizeArray to lists and set repeated fields
+        // 6. Set properties corresponding to map fields using local Dictionary<,> variables
     
         try
         
@@ -112,11 +114,7 @@ module Deserialization =
                 (dict.Type.GenericTypeArguments |> List.ofArray)
                 args
                 readMethod
-//            Expr.callStaticGeneric
-//                (dict.Type.GenericTypeArguments |> List.ofArray)
-//                // TODO introduct Expr.box instead of using Expr.Coerce(xxx, typeof<obj>)
-//                [Expr.Coerce(dict, typeof<obj>); keyReader; valueReader; field]
-//                <@@ Codec.readMapElement x x x x @@>
+
 
         /// Converts ResizeArray to immutable list and sets corresponding repeated property
         let setRepeatedProperty property (resizeArrayVar: Var) =
@@ -132,6 +130,9 @@ module Deserialization =
                     Expr.callStaticGeneric [itemTy] [Expr.Var(resizeArrayVar)] <@@ List.ofSeq<_> x @@>
 
             Expr.PropertySet(this, property.ProvidedProperty, list)
+            
+        let setMapProperty map content = 
+            Expr.PropertySet(this, map.Property, Expr.Var(content))
 
         let fieldLoop = Expr.forLoop <@@ ZeroCopyBuffer.allFields %%allFields @@> (fun field ->
             let maps = 
@@ -158,10 +159,15 @@ module Deserialization =
             resizeArrays
             |> Seq.map (fun pair -> setRepeatedProperty pair.Key pair.Value)
             |> List.ofSeq
+            
+        let setMapFields = 
+            dictionaries
+            |> Seq.map (fun pair -> setMapProperty pair.Key pair.Value)
+            |> List.ofSeq
 
         let create ty = Expr.callStaticGeneric [ty] [] <@@ create<_>() @@>
         
-        let body = fieldLoop :: setRepeatedFields |> Expr.sequence
+        let body = fieldLoop :: setRepeatedFields @ setMapFields |> Expr.sequence
 
         let body = 
             resizeArrays.Values
