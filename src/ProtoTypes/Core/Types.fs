@@ -23,7 +23,7 @@ type proto_bool = bool
 type proto_string = string
 type proto_bytes = ArraySegment<byte>
 type proto_map<'Key, 'Value> = IReadOnlyDictionary<'Key, 'Value>
-type proto_map_concrete<'Key, 'Value> = Dictionary<'Key, 'Value>
+type proto_concrete_map<'Key, 'Value> = Dictionary<'Key, 'Value>
 
 type Writer<'T> = FieldNum -> ZeroCopyBuffer -> 'T -> unit
 type Reader<'T> = RawField -> 'T

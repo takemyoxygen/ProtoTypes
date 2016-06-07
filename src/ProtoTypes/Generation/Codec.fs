@@ -66,7 +66,7 @@ module Codec =
         fun position buffer value ->
             value :?> list<'T> |> writeRepeated writeEmbedded position buffer
             
-    let private writeMap writeKey writeValue convertValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
+    let private writeMap writeKey writeValue convertValue : Writer<proto_map<_, _>> =
         fun position buffer value ->
             let item = new MapItem<_, _>(x, x, writeKey, writeValue)
             for pair in value do
@@ -74,7 +74,7 @@ module Codec =
                 item.Value <- convertValue pair.Value
                 writeEmbedded position buffer item
 
-    let writePrimitiveMap writeKey writeValue : Writer<IReadOnlyDictionary<'Key, 'Value>> =
+    let writePrimitiveMap writeKey writeValue : Writer<proto_map<'Key, 'Value>> =
         fun position buffer value -> writeMap writeKey writeValue id position buffer value
 
     let writeMessageMap<'Key, 'Value when 'Value :> Message> writeKey : Writer<obj> =
@@ -85,9 +85,9 @@ module Codec =
                 (fun msg -> msg :> Message) 
                 position
                 buffer 
-                (value :?> IReadOnlyDictionary<'Key, 'Value>)
+                (value :?> proto_map<'Key, 'Value>)
                 
-    let writeEnumMap<'Key> writeKey : Writer<IReadOnlyDictionary<'Key, proto_int32>> =
+    let writeEnumMap<'Key> writeKey : Writer<proto_map<'Key, proto_int32>> =
         fun position buffer value ->
             writeMap writeKey writeInt32 id position buffer value
 
@@ -122,13 +122,13 @@ module Codec =
         | LengthDelimited(_, segment) -> ZeroCopyBuffer segment |> deserialize<'T>
         | _ -> failwithf "Invalid format of the field: %O" field
         
-    let readMapElement<'Key, 'Value> (map: proto_map_concrete<_, _>) keyReader (valueReader: Reader<'Value>) field =
+    let readMapElement<'Key, 'Value> (map: proto_concrete_map<_, _>) keyReader (valueReader: Reader<'Value>) field =
         match field with
         | LengthDelimited(_, segment) ->
             let item = MapItem(keyReader, valueReader, x, x)
             item.ReadFrom <| ZeroCopyBuffer segment
-            (map :?> Dictionary<'Key, 'Value>).Add(item.Key, item.Value)
+            (map :?> proto_concrete_map<'Key, 'Value>).Add(item.Key, item.Value)
         | _ -> failwithf "Invalid format of the field: %O" field
 
     let readMessageMapElement<'Key, 'Value when 'Value :> Message and 'Value : (new: unit -> 'Value)> (map: obj) keyReader field =
-        readMapElement (map :?> proto_map_concrete<'Key, 'Value>) keyReader readEmbedded<'Value> field
+        readMapElement (map :?> proto_concrete_map<'Key, 'Value>) keyReader readEmbedded<'Value> field

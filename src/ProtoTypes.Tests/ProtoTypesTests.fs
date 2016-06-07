@@ -186,16 +186,16 @@ let ``Oneof properties serialization test``() =
 [<Test>]
 let ``Map test``() =
     let mapContainer = Sample.MapContainer()
-    let map = Dictionary<_, _>()
+    let map = proto_concrete_map<_, _>()
     map.Add(1, "foo")
     map.Add(2, "bar")
     mapContainer.PrimitiveMap <- map
     
-    let people = Dictionary<_, _>()
+    let people = proto_concrete_map<_, _>()
     people.Add("Vasya", createPerson())
     mapContainer.People <- people
     
-    let switches = Dictionary<_, _>()
+    let switches = proto_concrete_map<_, _>()
     switches.Add(1, Sample.MapContainer.Switch.On)
     mapContainer.Switches <- switches
     

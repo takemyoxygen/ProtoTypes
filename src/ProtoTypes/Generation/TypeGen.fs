@@ -117,7 +117,7 @@ module internal TypeGen =
             Expr.makeGenericType 
                 [ TypeResolver.resolveScalar keyTypeName |> Option.require (sprintf "Can't resolve scalar type '%s'" keyTypeName); 
                   valueType]
-                typedefof<IReadOnlyDictionary<_, _>>
+                typedefof<proto_map<_, _>>
                 
         let property, field = Provided.readWriteProperty mapType <| Naming.snakeToPascal name
         

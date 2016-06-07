@@ -66,7 +66,7 @@ module Deserialization =
                 Var(map.Property.Name, 
                     Expr.makeGenericType 
                         (map.Property.PropertyType.GenericTypeArguments |> List.ofArray) 
-                        typedefof<Dictionary<_, _>>))
+                        typedefof<proto_concrete_map<_, _>>))
             |> dict
 
         let samePosition field idx = <@@ (%%field: RawField).FieldNum = idx @@>
