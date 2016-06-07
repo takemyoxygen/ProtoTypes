@@ -202,4 +202,11 @@ let ``Map test``() =
     let buffer = mapContainer.SerializedLength |> int |> ZeroCopyBuffer
     mapContainer.Serialize buffer
     
+    let mapContainer' = Sample.MapContainer.Deserialize <| ZeroCopyBuffer buffer.AsArraySegment
     
+    let x = not'
+    mapContainer'.Switches |> should be (not' Null)
+    mapContainer'.Switches |> should haveCount 1
+    mapContainer'.Switches.[1] |> should be (equal Sample.MapContainer.Switch.On)
+    mapContainer'.People |> should haveCount 1
+    mapContainer'.People.["Vasya"].Name |> should be (equal "Name")
