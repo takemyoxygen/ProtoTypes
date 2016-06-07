@@ -204,9 +204,14 @@ let ``Map test``() =
     
     let mapContainer' = Sample.MapContainer.Deserialize <| ZeroCopyBuffer buffer.AsArraySegment
     
-    let x = not'
+    mapContainer'.PrimitiveMap |> should be (not' Null)
+    mapContainer'.PrimitiveMap.[1] |> should be (equal "foo")
+    mapContainer'.PrimitiveMap.[2] |> should be (equal "bar")
+    
     mapContainer'.Switches |> should be (not' Null)
     mapContainer'.Switches |> should haveCount 1
     mapContainer'.Switches.[1] |> should be (equal Sample.MapContainer.Switch.On)
+    
+    mapContainer'.People |> should be (not' Null)
     mapContainer'.People |> should haveCount 1
     mapContainer'.People.["Vasya"].Name |> should be (equal "Name")
