@@ -10,6 +10,6 @@ group Nuget
     nuget Froto.Core
     
 group StarterPack
-    github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fs
-    github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypes.fsi
-    github fsprojects/FSharp.TypeProviders.StarterPack src/ProvidedTypesTesting.fs
+    github takemyoxygen/FSharp.TypeProviders.StarterPack:nested-enums src/ProvidedTypes.fs
+    github takemyoxygen/FSharp.TypeProviders.StarterPack:nested-enums src/ProvidedTypes.fsi
+    github takemyoxygen/FSharp.TypeProviders.StarterPack:nested-enums src/ProvidedTypesTesting.fs

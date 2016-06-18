@@ -3,7 +3,6 @@
 GROUP Nuget
 NUGET
   remote: https://www.nuget.org/api/v2
-  specs:
     FAKE (4.27)
     FParsec (1.0.2) - framework: >= net45
     Froto.Core (0.2.1)
@@ -31,8 +30,7 @@ NUGET
 GROUP StarterPack
 
 GITHUB
-  remote: fsprojects/FSharp.TypeProviders.StarterPack
-  specs:
-    src/ProvidedTypes.fs (1ec57f583718953ac0e8e6a7023a37217e148f0a)
-    src/ProvidedTypes.fsi (1ec57f583718953ac0e8e6a7023a37217e148f0a)
-    src/ProvidedTypesTesting.fs (1ec57f583718953ac0e8e6a7023a37217e148f0a)
+  remote: takemyoxygen/FSharp.TypeProviders.StarterPack
+    src/ProvidedTypes.fs (bbf9acac705ced462accc6be4225dac7716d5036)
+    src/ProvidedTypes.fsi (bbf9acac705ced462accc6be4225dac7716d5036)
+    src/ProvidedTypesTesting.fs (bbf9acac705ced462accc6be4225dac7716d5036)

@@ -1,4 +1,4 @@
-#r "./packages/FAKE/tools/FakeLib.dll"
+#r "./packages/nuget/FAKE/tools/FakeLib.dll"
 
 open System
 open System.Net
