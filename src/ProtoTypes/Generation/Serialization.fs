@@ -48,7 +48,7 @@ module Serialization =
         | Class -> 
             Expr.callStaticGeneric
                 [keyType; valueType]
-                [keyWriter; positionExpr; buffer; Expr.Coerce(mapExpr, typeof<obj>)]
+                [keyWriter; positionExpr; buffer; Expr.box mapExpr]
                 <@@ Codec.writeMessageMap x x x x @@>
         | Enum ->
             Expr.callStaticGeneric
@@ -94,12 +94,12 @@ module Serialization =
             | Class, Optional -> 
                 Expr.callStaticGeneric 
                     [prop.UnderlyingType] 
-                    [Expr.Value(position); buffer; Expr.Coerce(value, typeof<obj>)]  
+                    [Expr.Value(position); buffer; Expr.box value]  
                     <@@ Codec.writeOptionalEmbedded x x x @@>
             | Class, Repeated ->
                 Expr.callStaticGeneric 
                     [prop.UnderlyingType] 
-                    [Expr.Value(position); buffer; Expr.Coerce(value, typeof<obj>)]  
+                    [Expr.Value(position); buffer; Expr.box value]  
                     <@@ Codec.writeRepeatedEmbedded x x x @@>
             | Class, Required -> 
                 <@@ Codec.writeEmbedded x x x @@> 

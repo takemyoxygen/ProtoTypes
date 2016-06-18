@@ -83,7 +83,7 @@ module Deserialization =
                 | Class ->
                     Expr.callStaticGeneric 
                         [list.Type.GenericTypeArguments.[0]]
-                        [Expr.Coerce(list, typeof<obj>); value]
+                        [Expr.box list; value]
                         <@@ ResizeArray.add x x @@>
                 | _ ->
                     let addMethod = list.Type.GetMethod("Add")
@@ -115,7 +115,6 @@ module Deserialization =
                 args
                 readMethod
 
-
         /// Converts ResizeArray to immutable list and sets corresponding repeated property
         let setRepeatedProperty property (resizeArrayVar: Var) =
             let itemTy = resizeArrayVar.Type.GenericTypeArguments.[0]
@@ -124,7 +123,7 @@ module Deserialization =
                 | Class ->
                     Expr.callStaticGeneric 
                         [itemTy] 
-                        [Expr.Coerce(Expr.Var(resizeArrayVar), typeof<obj>)]
+                        [Expr.box <| Expr.Var(resizeArrayVar)]
                         <@@ ResizeArray.toList x @@> 
                 | _ -> 
                     Expr.callStaticGeneric [itemTy] [Expr.Var(resizeArrayVar)] <@@ List.ofSeq<_> x @@>

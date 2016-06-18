@@ -72,7 +72,7 @@ module Expr =
                     body <| Expr.Var iterVar))
         
         // Expr.TryFinally is not really supported by FSharp.TypeProviders.StarterPack
-        // so, Expr.Sequential is used insted (Dispose() won't be called if exception is raised)
+        // so, Expr.Sequential is used instead (Dispose() won't be called if exception is raised)
         Expr.Let(
             enumeratorVar, 
             Expr.Call(sequence, sequence.Type.GetMethod("GetEnumerator"), []),
@@ -86,8 +86,7 @@ module Expr =
             
     let defaultOf ty =
         callStaticGeneric [ty] [] <@@ Unchecked.defaultof<_> @@>
-        
-    // TODO check if Expr.Applications does the same
+
     let apply lambda = Seq.fold (fun l arg -> Expr.Application(l, arg)) lambda
 
     let box expr = Expr.Coerce(expr, typeof<obj>)

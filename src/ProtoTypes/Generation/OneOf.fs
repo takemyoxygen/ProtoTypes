@@ -49,11 +49,11 @@ module OneOf =
                     let value = args.[1]
                     let case = 
                         Expr.IfThenElse(
-                            Expr.equal (Expr.Coerce(value, typeof<obj>)) (Expr.Value(null)),
+                            Expr.equal (Expr.box value) (Expr.Value(null)),
                             Expr.Value(0),
                             Expr.Value(i))
                     Expr.Sequential(
-                        Expr.FieldSet(args.[0], valueField, Expr.Coerce(value, typeof<obj>)),
+                        Expr.FieldSet(args.[0], valueField, Expr.box value),
                         Expr.FieldSet(args.[0], caseField, case))
                         
                 let propertyInfo =
