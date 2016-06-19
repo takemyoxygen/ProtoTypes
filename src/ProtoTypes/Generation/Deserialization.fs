@@ -36,7 +36,11 @@ module Deserialization =
     let private deserializeField (property: PropertyDescriptor) (rawField: Expr) =
         match property.TypeKind with
         | Primitive -> primitiveReader rawField property.ProtobufType
-        | Enum -> Expr.Coerce(<@@ Codec.readInt32 %%rawField @@>, property.UnderlyingType)
+        | Enum ->
+            // No need to cast int32 to property.UnderlyingType. Apparently, casting is not reqiured
+            // and moreover, if cast using Expr.Coerce, on Windows it will emit castclass IL instruction which 
+            // doesn't work for this particular cast when both types are value types. 
+            <@@ Codec.readInt32 %%rawField @@>
         | Class -> Expr.callStaticGeneric [property.UnderlyingType] [rawField ] <@@ Codec.readEmbedded<Dummy> x @@> 
 
     let readFrom (typeInfo: TypeDescriptor) this buffer =
