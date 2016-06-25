@@ -31,6 +31,6 @@ GROUP StarterPack
 
 GITHUB
   remote: takemyoxygen/FSharp.TypeProviders.StarterPack
-    src/ProvidedTypes.fs (bbf9acac705ced462accc6be4225dac7716d5036)
-    src/ProvidedTypes.fsi (bbf9acac705ced462accc6be4225dac7716d5036)
-    src/ProvidedTypesTesting.fs (bbf9acac705ced462accc6be4225dac7716d5036)
+    src/ProvidedTypes.fs (75d2e867be2cd9a84af9b9985122063bcc391398)
+    src/ProvidedTypes.fsi (75d2e867be2cd9a84af9b9985122063bcc391398)
+    src/ProvidedTypesTesting.fs (75d2e867be2cd9a84af9b9985122063bcc391398)
