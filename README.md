@@ -1,6 +1,8 @@
 # ProtoTypes
 F# type provider for Google Protocol Buffers
 
+## This repository is now part of [Froto](https://github.com/ctaggart/froto/tree/type-provider)
+
 ## Build status:
 
 | Windows | Linux |
